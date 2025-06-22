@@ -2,10 +2,13 @@
   "name": "Teltonika Server",
   "version": "0.2.1",
   "slug": "teltonika_server",
-  "description": "Server pro příjem dat z Teltonika zařízení s protokolem AVL a logování do souboru s webovým rozhraním",
+  "description": "Server for receiving data from Teltonika GPS devices using AVL protocol and logging to file with web interface",
   "startup": "services",
   "arch": ["amd64", "i386", "aarch64", "armv7", "armhf"],
   "boot": "auto",
+  "panel_icon": "mdi:server-network-outline",
+  "url": "https://github.com/PavelVe/home-assistant-addons/blob/main/TeltonikaServer/README.md",
+  "homeassistant": "2022.1.1",
   "options": {
     "tcp_port": 3030,
     "web_port": 3031

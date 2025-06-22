@@ -1,10 +1,10 @@
-FROM python:3.11-slim
+FROM ghcr.io/home-assistant/base-python:3.11
 
-RUN mkdir /data
+RUN mkdir -p /data
 
 WORKDIR /app
 
-COPY tcp_server.py run.sh ./
+COPY main.py tcp_server.py web_server.py run.sh ./
 
 RUN chmod +x run.sh
 

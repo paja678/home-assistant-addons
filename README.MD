@@ -17,7 +17,7 @@ Press the button, or
 
 This repository contains the following add-ons
 
-### [TeltonicaTCP](./teltonika_tcp)
+### [TeltonikaServer](./TeltonikaServer)
 
 
 ![Supports aarch64 Architecture][aarch64-shield]
