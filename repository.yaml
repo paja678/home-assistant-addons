@@ -1,0 +1,4 @@
+# https://developers.home-assistant.io/docs/add-ons/repository#repository-configuration
+name: Pavel's Home Assistant add-on repository
+url: 'https://github.com/pavelve/home-assistant-addons'
+maintainer: PavelVe <vejnar.p@gmail.com>
