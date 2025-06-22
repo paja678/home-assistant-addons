@@ -1,6 +1,6 @@
 {
   "name": "Teltonika Server",
-  "version": "0.1",
+  "version": "0.1.1",
   "slug": "teltonika_server",
   "description": "Server pro příjem dat z Teltonika zařízení s protokolem AVL a logování do souboru",
   "startup": "services",
@@ -11,5 +11,7 @@
   },
   "schema": {
     "port": "int"
-  }
+  },
+  "ingress": false,
+  "host_network": true
 }
