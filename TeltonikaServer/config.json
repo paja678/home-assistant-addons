@@ -1,8 +1,8 @@
 {
   "name": "Teltonika Server",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "slug": "teltonika_server",
-  "description": "Server pro příjem dat z Teltonika zařízení s protokolem AVL a logování do souboru",
+  "description": "Server pro příjem dat z Teltonika zařízení s protokolem AVL a logování do souboru s webovým rozhraním",
   "startup": "services",
   "arch": ["amd64", "armv7", "armhf", "aarch64"],
   "boot": "auto",
@@ -12,6 +12,7 @@
   "schema": {
     "port": "int"
   },
-  "ingress": false,
+  "ingress": true,
+  "ingress_port": 8099,
   "host_network": true
 }
