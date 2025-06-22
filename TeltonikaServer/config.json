@@ -1,6 +1,6 @@
 {
   "name": "Teltonika Server",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "slug": "teltonika_server",
   "description": "Server for receiving data from Teltonika GPS devices using AVL protocol and logging to file with web interface",
   "startup": "services",
