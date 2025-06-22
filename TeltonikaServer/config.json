@@ -1,0 +1,15 @@
+{
+  "name": "Teltonika Server",
+  "version": "0.1",
+  "slug": "teltonika_server",
+  "description": "Server pro příjem dat z Teltonika zařízení s protokolem AVL a logování do souboru",
+  "startup": "services",
+  "arch": ["amd64", "armv7", "armhf", "aarch64"],
+  "boot": "auto",
+  "options": {
+    "port": 3030
+  },
+  "schema": {
+    "port": "int"
+  }
+}
