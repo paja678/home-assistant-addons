@@ -1,6 +1,6 @@
 {
   "name": "Teltonika Server",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "slug": "teltonika_server",
   "description": "Server for receiving data from Teltonika GPS devices using AVL protocol and logging to file with web interface",
   "startup": "services",
@@ -18,5 +18,6 @@
     "web_port": "int"
   },
   "ingress": true,
-  "host_network": true
+  "host_network": true,
+  "init": false
 }
