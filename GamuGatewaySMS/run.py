@@ -73,129 +73,15 @@ app = Flask(__name__)
 import os
 ingress_path = os.environ.get('INGRESS_PATH', '')
 
-# Define root route BEFORE Flask-RESTX initialization to ensure it takes precedence
-@app.route('/')
-def home():
-    """Root page handler - defined early to ensure it's registered first"""
-    from flask import Response
-    html = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>SMS Gammu Gateway</title>
-        <meta charset="utf-8">
-        <style>
-            body { 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: #f5f5f5;
-            }
-            .container {
-                max-width: 800px;
-                margin: 0 auto;
-                background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            h1 {
-                color: #333;
-                margin-bottom: 10px;
-            }
-            .status {
-                background: #e8f5e9;
-                border-left: 4px solid #4caf50;
-                padding: 15px;
-                margin: 20px 0;
-            }
-            .endpoints {
-                background: #f5f5f5;
-                padding: 20px;
-                border-radius: 5px;
-                margin: 20px 0;
-            }
-            .endpoint {
-                background: white;
-                padding: 10px;
-                margin: 10px 0;
-                border-radius: 3px;
-                font-family: monospace;
-            }
-            .button {
-                display: inline-block;
-                padding: 10px 20px;
-                background: #2196F3;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 10px 10px 10px 0;
-            }
-            .button:hover {
-                background: #1976D2;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>📱 SMS Gammu Gateway</h1>
-            <p>REST API for sending and receiving SMS messages via USB GSM modems</p>
-            
-            <div class="status">
-                <strong>✅ Gateway is running</strong><br>
-                Version: 1.1.2
-            </div>
-            
-            <h2>Quick Links</h2>
-            <a href="docs/" class="button">📋 Swagger API Docs</a>
-            <a href="status/signal" class="button">📊 Signal Strength</a>
-            <a href="status/network" class="button">🌐 Network Info</a>
-            
-            <h2>API Endpoints</h2>
-            <div class="endpoints">
-                <div class="endpoint">
-                    <strong>GET /status/signal</strong> - Get signal strength (public)
-                </div>
-                <div class="endpoint">
-                    <strong>GET /status/network</strong> - Get network info (public)
-                </div>
-                <div class="endpoint">
-                    <strong>POST /sms</strong> - Send SMS (requires auth)
-                </div>
-                <div class="endpoint">
-                    <strong>GET /sms</strong> - Get all SMS (requires auth)
-                </div>
-                <div class="endpoint">
-                    <strong>GET /sms/{id}</strong> - Get specific SMS (requires auth)
-                </div>
-                <div class="endpoint">
-                    <strong>DELETE /sms/{id}</strong> - Delete SMS (requires auth)
-                </div>
-                <div class="endpoint">
-                    <strong>GET /getsms</strong> - Get and delete first SMS (requires auth)
-                </div>
-                <div class="endpoint">
-                    <strong>GET /status/reset</strong> - Reset modem (public)
-                </div>
-            </div>
-            
-            <h2>Authentication</h2>
-            <p>Protected endpoints require HTTP Basic Authentication with your configured username and password.</p>
-        </div>
-    </body>
-    </html>
-    '''
-    return Response(html, mimetype='text/html', status=200, headers={'Content-Type': 'text/html; charset=utf-8'})
-
 # Swagger UI Configuration  
-# Enable Swagger UI but move it to /docs path to avoid conflicts
+# Put Swagger UI directly on root path for Ingress compatibility
 api = Api(
     app, 
     version='1.1.2',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
-    doc='/docs/',  # Move Swagger UI to /docs/ path
-    prefix='',  # Remove prefix to avoid double-prefixing
+    doc='/',  # Put Swagger UI on root path
+    prefix='',  # No prefix needed
     authorizations={
         'basicAuth': {
             'type': 'basic',
