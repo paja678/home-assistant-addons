@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.7] - 2025-01-19
+
+### Added
+- **Custom Icon** - Professional 1024x1024 SMS Gateway icon
+- Visual identity for add-on in Home Assistant store
+
+### Fixed
+- Icon properly copied to Docker container
+
+## [1.0.6] - 2025-01-19
+
+### Fixed
+- **Critical fix**: `mqtt_publisher.py` now properly copied to Docker container
+- Resolved `ModuleNotFoundError: No module named 'mqtt_publisher'`
+
+## [1.0.5] - 2025-01-19
+
+### Added
+- **MQTT Bridge** - Optional MQTT integration with Home Assistant auto-discovery
+- **3 Automatic Sensors**: GSM Signal Strength, Network Info, Last SMS Received
+- **Periodic Status Updates** - Every 5 minutes to MQTT
+- **Real-time SMS Notifications** - Instant MQTT publish on SMS receipt
+- **Multi-language Configuration** - EN/CS translations for MQTT options
+
+### Fixed
+- **Root Route Fix** - Fixed "Not Found" error when opening Web UI
+- Added redirect from `/` to `/docs/` for better user experience
+
+### Changed
+- Enhanced startup messages with MQTT status information
+- Improved icon from `mdi:message-text` to `mdi:cellphone-message`
+
 ## [1.0.4] - 2025-01-19
 
 ### Added

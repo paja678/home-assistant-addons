@@ -18,6 +18,11 @@ from support import init_state_machine, retrieveAllSms, deleteSms, encodeSms
 from mqtt_publisher import MQTTPublisher
 from gammu import GSMNetworks
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+mqtt_logger = logging.getLogger('mqtt_publisher')
+mqtt_logger.setLevel(logging.INFO)
+
 # Suppress Flask development server warning
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
@@ -130,7 +135,7 @@ reset_response = api.model('Reset Response', {
 ns_sms = api.namespace('sms', description='SMS operations (requires authentication)')
 ns_status = api.namespace('status', description='Device status and information (public)')
 
-# Add root route for Ingress compatibility
+# Add root route for Ingress compatibility  
 @app.route('/')
 def index():
     """Redirect root to Swagger documentation"""
@@ -267,7 +272,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.0.7 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.0.8 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"📋 Swagger UI: http://localhost:{port}/docs/")
@@ -276,6 +281,12 @@ if __name__ == '__main__':
     # MQTT info
     if config.get('mqtt_enabled', False):
         print(f"📡 MQTT: Enabled -> {config.get('mqtt_host')}:{config.get('mqtt_port')}")
+        
+        # Wait a moment for MQTT connection, then publish initial states
+        import time
+        time.sleep(2)
+        mqtt_publisher.publish_initial_states_with_machine(machine)
+        
         # Start periodic MQTT publishing
         mqtt_publisher.publish_status_periodic(machine, interval=300)  # 5 minutes
     else:

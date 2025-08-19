@@ -131,6 +131,9 @@ class MQTTPublisher:
             self.client.publish(topic, json.dumps(config), retain=True)
         
         logger.info("Published MQTT discovery configurations")
+        
+        # Publish initial states immediately after discovery
+        self._publish_initial_states()
     
     def publish_signal_strength(self, signal_data: Dict[str, Any]):
         """Publish signal strength data"""
@@ -138,7 +141,8 @@ class MQTTPublisher:
             return
             
         topic = f"{self.topic_prefix}/signal/state"
-        self.client.publish(topic, json.dumps(signal_data))
+        self.client.publish(topic, json.dumps(signal_data), retain=True)
+        logger.info(f"📡 Published signal strength to MQTT: {signal_data.get('SignalPercent', 'N/A')}%")
     
     def publish_network_info(self, network_data: Dict[str, Any]):
         """Publish network information"""
@@ -146,7 +150,8 @@ class MQTTPublisher:
             return
             
         topic = f"{self.topic_prefix}/network/state"
-        self.client.publish(topic, json.dumps(network_data))
+        self.client.publish(topic, json.dumps(network_data), retain=True)
+        logger.info(f"📡 Published network info to MQTT: {network_data.get('NetworkName', 'Unknown')}")
     
     def publish_sms_received(self, sms_data: Dict[str, Any]):
         """Publish received SMS data"""
@@ -159,7 +164,40 @@ class MQTTPublisher:
         topic = f"{self.topic_prefix}/sms/state"
         self.client.publish(topic, json.dumps(sms_data))
         
-        logger.info(f"Published SMS to MQTT: {sms_data.get('Number', 'Unknown')} -> {sms_data.get('Text', '')[:50]}...")
+        logger.info(f"📡 Published SMS to MQTT: {sms_data.get('Number', 'Unknown')} -> {sms_data.get('Text', '')[:50]}...")
+    
+    def _publish_initial_states(self):
+        """Publish initial sensor states on startup"""
+        # This will be called from the main thread with access to gammu machine
+        pass
+    
+    def publish_initial_states_with_machine(self, gammu_machine):
+        """Publish initial states with gammu machine access"""
+        if not self.connected:
+            logger.info("📡 MQTT not connected, skipping initial state publish")
+            return
+            
+        try:
+            from gammu import GSMNetworks
+            
+            # Publish initial signal strength
+            signal = gammu_machine.GetSignalQuality()
+            self.publish_signal_strength(signal)
+            
+            # Publish initial network info
+            network = gammu_machine.GetNetworkInfo()
+            network["NetworkName"] = GSMNetworks.get(network.get("NetworkCode", ""), 'Unknown')
+            self.publish_network_info(network)
+            
+            # Publish empty SMS state initially
+            empty_sms = {"Date": "", "Number": "", "State": "", "Text": "", "timestamp": ""}
+            topic = f"{self.topic_prefix}/sms/state"
+            self.client.publish(topic, json.dumps(empty_sms), retain=True)
+            
+            logger.info("📡 Published initial states to MQTT")
+            
+        except Exception as e:
+            logger.error(f"Error publishing initial states: {e}")
     
     def publish_status_periodic(self, gammu_machine, interval=60):
         """Publish status data periodically in background thread"""
