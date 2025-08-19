@@ -19,7 +19,6 @@ This repository contains the following add-ons
 
 ### [TeltonikaServer](./TeltonikaServer)
 
-
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 ![Supports armhf Architecture][armhf-shield]
@@ -27,6 +26,16 @@ This repository contains the following add-ons
 ![Supports i386 Architecture][i386-shield]
 
 This addon receives AVL data from Teltonika GPS devices over TCP and logs it with timestamps for further processing or diagnostics.
+
+### [SMS Gammu Gateway](./GamuGatewaySMS)
+
+![Supports aarch64 Architecture][aarch64-shield]
+![Supports amd64 Architecture][amd64-shield]
+![Supports armhf Architecture][armhf-shield]
+![Supports armv7 Architecture][armv7-shield]
+![Supports i386 Architecture][i386-shield]
+
+REST API SMS Gateway using python-gammu for USB GSM modems (SIM800L, Huawei E1750, etc.). Send and receive SMS messages via REST API with authentication.
 
 
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
