@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/aarch64-base:3.19
 FROM $BUILD_FROM
 
 # Set shell
@@ -44,7 +44,7 @@ LABEL \
     io.hass.name="SMS Gammu Gateway" \
     io.hass.description="REST API SMS Gateway using python-gammu for USB GSM modems" \
     io.hass.type="addon" \
-    io.hass.version="1.0.0" \
+    io.hass.version="1.0.1" \
     maintainer="PavelVe <vejnar.p@gmail.com>"
 
 # Run
