@@ -34,6 +34,7 @@ COPY support.py .
 COPY mqtt_publisher.py .
 COPY run.sh .
 COPY icon.png .
+COPY services.yaml .
 
 # Make run script executable
 RUN chmod +x run.sh
@@ -46,7 +47,7 @@ LABEL \
     io.hass.name="SMS Gammu Gateway" \
     io.hass.description="REST API SMS Gateway using python-gammu for USB GSM modems" \
     io.hass.type="addon" \
-    io.hass.version="1.1.5" \
+    io.hass.version="1.1.6" \
     maintainer="PavelVe"
 
 # Run

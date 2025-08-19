@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.6] - 2025-01-19
+
+### Added
+- **SMS Send Button** - New button entity in Home Assistant device for easy SMS sending
+- **SMS Send Status Sensor** - Shows status of SMS sending operations (success/error/button_pressed)
+- **Home Assistant Service** - Native `send_sms` service with phone number and message fields
+- **Enhanced MQTT Discovery** - Button and status sensor automatically appear in HA device
+
+### New Features in Home Assistant UI:
+- **Button Entity**: "Send SMS" button in device (shows notification when pressed)
+- **Status Sensor**: "SMS Send Status" shows last operation result
+- **Service Call**: Use `send_sms` service in automations with `number` and `message` fields
+
+### Usage:
+```yaml
+# In automations or scripts
+service: send_sms
+data:
+  number: "+420123456789"
+  message: "Alert: Door opened!"
+```
+
+### Changed
+- MQTT discovery now creates 5 entities: Signal, Network, Last SMS, Send Status, Send Button
+- Enhanced logging for MQTT button interactions
+
 ## [1.1.5] - 2025-01-19
 
 ### Added

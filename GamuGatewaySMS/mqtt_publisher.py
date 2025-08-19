@@ -66,6 +66,11 @@ class MQTTPublisher:
             send_topic = f"{self.topic_prefix}/send"
             client.subscribe(send_topic)
             logger.info(f"Subscribed to SMS send topic: {send_topic}")
+            
+            # Subscribe to SMS button topic
+            button_topic = f"{self.topic_prefix}/send_button"
+            client.subscribe(button_topic)
+            logger.info(f"Subscribed to SMS button topic: {button_topic}")
         else:
             logger.error(f"Failed to connect to MQTT broker: {rc}")
     
@@ -87,8 +92,15 @@ class MQTTPublisher:
             
             # Check if it's SMS send command
             send_topic = f"{self.topic_prefix}/send"
+            button_topic = f"{self.topic_prefix}/send_button"
+            
             if topic == send_topic:
                 self._handle_sms_send_command(payload)
+            elif topic == button_topic and payload == "PRESS":
+                # Button pressed - for now just show notification
+                # In a real implementation, you'd want to open a dialog or use HA service
+                logger.info("SMS Send button pressed - use MQTT topic or service to send SMS")
+                self._publish_button_press_notification()
                 
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
@@ -169,6 +181,18 @@ class MQTTPublisher:
                 }
                 self.client.publish(status_topic, json.dumps(status_data), retain=False)
     
+    def _publish_button_press_notification(self):
+        """Publish notification when SMS send button is pressed"""
+        if self.connected:
+            status_topic = f"{self.topic_prefix}/send_status"
+            status_data = {
+                "status": "button_pressed",
+                "message": "Use MQTT topic or Home Assistant service to send SMS",
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            self.client.publish(status_topic, json.dumps(status_data), retain=False)
+            logger.info("Published button press notification")
+    
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""
         if not self.connected:
@@ -222,17 +246,50 @@ class MQTTPublisher:
             }
         }
         
+        # SMS send status sensor
+        send_status_config = {
+            "name": "SMS Send Status",
+            "unique_id": "sms_gateway_send_status",
+            "state_topic": f"{self.topic_prefix}/send_status",
+            "value_template": "{{ value_json.status }}",
+            "json_attributes_topic": f"{self.topic_prefix}/send_status",
+            "icon": "mdi:send",
+            "device": {
+                "identifiers": ["sms_gateway"],
+                "name": "SMS Gateway",
+                "model": "GSM Modem",
+                "manufacturer": "Gammu Gateway"
+            }
+        }
+        
+        # SMS send button
+        button_config = {
+            "name": "Send SMS",
+            "unique_id": "sms_gateway_send_button",
+            "command_topic": f"{self.topic_prefix}/send_button",
+            "payload_press": "PRESS",
+            "icon": "mdi:message-plus",
+            "device": {
+                "identifiers": ["sms_gateway"],
+                "name": "SMS Gateway",
+                "model": "GSM Modem",
+                "manufacturer": "Gammu Gateway"
+            }
+        }
+        
         # Publish discovery configs
         discoveries = [
             ("homeassistant/sensor/sms_gateway_signal/config", signal_config),
             ("homeassistant/sensor/sms_gateway_network/config", network_config),
-            ("homeassistant/sensor/sms_gateway_last_sms/config", sms_config)
+            ("homeassistant/sensor/sms_gateway_last_sms/config", sms_config),
+            ("homeassistant/sensor/sms_gateway_send_status/config", send_status_config),
+            ("homeassistant/button/sms_gateway_send_button/config", button_config)
         ]
         
         for topic, config in discoveries:
             self.client.publish(topic, json.dumps(config), retain=True)
         
-        logger.info("Published MQTT discovery configurations")
+        logger.info("Published MQTT discovery configurations including SMS send button")
         
         # Publish initial states immediately after discovery
         self._publish_initial_states()
