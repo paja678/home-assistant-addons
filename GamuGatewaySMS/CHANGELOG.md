@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2025-01-19
+
+### Fixed
+- **MQTT/Button SMS Logic** - Now uses same SMSC handling as REST API for consistency
+- **SMSC Location Method** - MQTT sending now uses `{'Location': 1}` when no SMSC configured (same as REST API)
+- **Simplified SMSC Resolution** - Removed complex fallback that was different from REST API behavior
+
+### Changed
+- MQTT Publisher now uses identical SMSC logic as REST API endpoints
+- Consistent SMS sending behavior across both REST API and MQTT/Button interfaces
+- Simplified logging for SMSC source identification
+
 ## [1.2.1] - 2025-01-19
 
 ### Added

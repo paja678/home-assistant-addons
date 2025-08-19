@@ -170,20 +170,15 @@ class MQTTPublisher:
             # Encode and send SMS
             messages = encodeSms(smsinfo)
             for message in messages:
-                # Try configured SMSC, then SIM, then fallback
+                # Use same SMSC logic as REST API
                 config_smsc = self.config.get('smsc_number', '').strip()
                 if config_smsc:
                     message["SMSC"] = {'Number': config_smsc}
                     logger.info(f"Using configured SMSC: {config_smsc}")
                 else:
-                    try:
-                        smsc = self.gammu_machine.GetSMSC(Location=1)
-                        message["SMSC"] = {'Number': smsc['Number']}
-                        logger.info(f"Using SMSC from SIM: {smsc['Number']}")
-                    except:
-                        # Fallback to automatic SMSC
-                        message["SMSC"] = {'Location': 1}
-                        logger.warning("Could not get SMSC from SIM, using location 1")
+                    # Use Location 1 (same as REST API when no SMSC provided)
+                    message["SMSC"] = {'Location': 1}
+                    logger.info("Using SMSC from Location 1 (same as REST API)")
                 
                 message["Number"] = number
                 result = self.gammu_machine.SendSMS(message)
