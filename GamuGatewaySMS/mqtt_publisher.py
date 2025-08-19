@@ -19,6 +19,8 @@ class MQTTPublisher:
         self.connected = False
         self.topic_prefix = config.get('mqtt_topic_prefix', 'homeassistant/sensor/sms_gateway')
         self.gammu_machine = None  # Will be set externally
+        self.current_phone_number = ""  # Current phone number from text input
+        self.current_message_text = ""  # Current message text from text input
         
         if config.get('mqtt_enabled', False):
             self._setup_client()
@@ -71,6 +73,13 @@ class MQTTPublisher:
             button_topic = f"{self.topic_prefix}/send_button"
             client.subscribe(button_topic)
             logger.info(f"Subscribed to SMS button topic: {button_topic}")
+            
+            # Subscribe to text input topics
+            phone_topic = f"{self.topic_prefix}/phone_number/set"
+            message_topic = f"{self.topic_prefix}/message_text/set"
+            client.subscribe(phone_topic)
+            client.subscribe(message_topic)
+            logger.info(f"Subscribed to text input topics: {phone_topic}, {message_topic}")
         else:
             logger.error(f"Failed to connect to MQTT broker: {rc}")
     
@@ -90,17 +99,27 @@ class MQTTPublisher:
             payload = msg.payload.decode('utf-8')
             logger.info(f"Received MQTT message on topic {topic}: {payload}")
             
-            # Check if it's SMS send command
+            # Check message topic and handle accordingly
             send_topic = f"{self.topic_prefix}/send"
             button_topic = f"{self.topic_prefix}/send_button"
+            phone_topic = f"{self.topic_prefix}/phone_number/set"
+            message_topic = f"{self.topic_prefix}/message_text/set"
             
             if topic == send_topic:
                 self._handle_sms_send_command(payload)
             elif topic == button_topic and payload == "PRESS":
-                # Button pressed - for now just show notification
-                # In a real implementation, you'd want to open a dialog or use HA service
-                logger.info("SMS Send button pressed - use MQTT topic or service to send SMS")
-                self._publish_button_press_notification()
+                # Button pressed - send SMS using current text inputs
+                self._handle_button_sms_send()
+            elif topic == phone_topic:
+                # Phone number updated
+                self.current_phone_number = payload
+                self._publish_phone_state(payload)
+                logger.info(f"Phone number updated: {payload}")
+            elif topic == message_topic:
+                # Message text updated
+                self.current_message_text = payload
+                self._publish_message_state(payload)
+                logger.info(f"Message text updated: {payload}")
                 
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
@@ -181,17 +200,53 @@ class MQTTPublisher:
                 }
                 self.client.publish(status_topic, json.dumps(status_data), retain=False)
     
-    def _publish_button_press_notification(self):
-        """Publish notification when SMS send button is pressed"""
+    def _handle_button_sms_send(self):
+        """Handle SMS send when button is pressed using current text inputs"""
+        if not self.current_phone_number or not self.current_message_text:
+            # If fields are empty, show instruction
+            if self.connected:
+                status_topic = f"{self.topic_prefix}/send_status"
+                status_data = {
+                    "status": "missing_fields",
+                    "message": "Please fill in phone number and message text first",
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self.client.publish(status_topic, json.dumps(status_data), retain=False)
+            logger.warning("Button pressed but phone number or message text is empty")
+            return
+        
+        # Send SMS using current values
+        logger.info(f"Button SMS send: {self.current_phone_number} -> {self.current_message_text}")
+        if hasattr(self, 'gammu_machine') and self.gammu_machine:
+            self._send_sms_via_gammu(self.current_phone_number, self.current_message_text)
+            # Clear fields after successful send
+            self._clear_text_fields()
+        else:
+            logger.error("Gammu machine not available for SMS sending")
+    
+    def _clear_text_fields(self):
+        """Clear phone number and message text fields"""
+        self.current_phone_number = ""
+        self.current_message_text = ""
         if self.connected:
-            status_topic = f"{self.topic_prefix}/send_status"
-            status_data = {
-                "status": "button_pressed",
-                "message": "Use MQTT topic or Home Assistant service to send SMS",
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-            }
-            self.client.publish(status_topic, json.dumps(status_data), retain=False)
-            logger.info("Published button press notification")
+            # Publish empty states to clear UI
+            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+            message_state_topic = f"{self.topic_prefix}/message_text/state"
+            self.client.publish(phone_state_topic, "", retain=False)
+            self.client.publish(message_state_topic, "", retain=False)
+            logger.info("Cleared text input fields")
+    
+    def _publish_phone_state(self, value):
+        """Publish phone number state"""
+        if self.connected:
+            state_topic = f"{self.topic_prefix}/phone_number/state"
+            self.client.publish(state_topic, value, retain=False)
+    
+    def _publish_message_state(self, value):
+        """Publish message text state"""
+        if self.connected:
+            state_topic = f"{self.topic_prefix}/message_text/state"
+            self.client.publish(state_topic, value, retain=False)
     
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""
@@ -277,13 +332,49 @@ class MQTTPublisher:
             }
         }
         
+        # Phone number input text
+        phone_text_config = {
+            "name": "Phone Number",
+            "unique_id": "sms_gateway_phone_number",
+            "command_topic": f"{self.topic_prefix}/phone_number/set",
+            "state_topic": f"{self.topic_prefix}/phone_number/state",
+            "icon": "mdi:phone",
+            "mode": "text",
+            "pattern": r"^\+?[\d\s\-\(\)]+$",
+            "device": {
+                "identifiers": ["sms_gateway"],
+                "name": "SMS Gateway",
+                "model": "GSM Modem",
+                "manufacturer": "Gammu Gateway"
+            }
+        }
+        
+        # Message input text
+        message_text_config = {
+            "name": "Message Text",
+            "unique_id": "sms_gateway_message_text",
+            "command_topic": f"{self.topic_prefix}/message_text/set",
+            "state_topic": f"{self.topic_prefix}/message_text/state",
+            "icon": "mdi:message-text",
+            "mode": "text",
+            "max": 160,
+            "device": {
+                "identifiers": ["sms_gateway"],
+                "name": "SMS Gateway",
+                "model": "GSM Modem",
+                "manufacturer": "Gammu Gateway"
+            }
+        }
+        
         # Publish discovery configs
         discoveries = [
             ("homeassistant/sensor/sms_gateway_signal/config", signal_config),
             ("homeassistant/sensor/sms_gateway_network/config", network_config),
             ("homeassistant/sensor/sms_gateway_last_sms/config", sms_config),
             ("homeassistant/sensor/sms_gateway_send_status/config", send_status_config),
-            ("homeassistant/button/sms_gateway_send_button/config", button_config)
+            ("homeassistant/button/sms_gateway_send_button/config", button_config),
+            ("homeassistant/text/sms_gateway_phone_number/config", phone_text_config),
+            ("homeassistant/text/sms_gateway_message_text/config", message_text_config)
         ]
         
         for topic, config in discoveries:

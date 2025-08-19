@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.8] - 2025-01-19
+
+### Added
+- **Text Input Fields** - Phone Number and Message Text fields directly in SMS Gateway device
+- **Smart Button Functionality** - Send SMS button now uses values from text input fields  
+- **Auto-clear Fields** - Text fields automatically clear after successful SMS send
+- **Field Validation** - Shows error if trying to send without filling required fields
+- **Professional UI** - Complete SMS sending interface in one device
+
+### New User Interface:
+```
+┌─ SMS Gateway Device ─────────┐
+│ 📱 Phone Number: [+420...  ] │
+│ 💬 Message Text: [Hello...  ] │  
+│ 🔘 [Send SMS]                │
+│ 📊 Status: success           │
+│ 📊 Signal: 85%               │
+│ 🌐 Network: T-Mobile          │
+└──────────────────────────────┘
+```
+
+### How it works:
+1. Fill in Phone Number (e.g., +420123456789)
+2. Fill in Message Text (max 160 chars)
+3. Click "Send SMS" button  
+4. Fields automatically clear after successful send
+5. Status shows result (success/error/missing_fields)
+
+### Changed
+- Button now sends actual SMS instead of just showing notification
+- Enhanced MQTT discovery with text input entities
+- Improved error handling and user feedback
+
 ## [1.1.7] - 2025-01-19
 
 ### Added
