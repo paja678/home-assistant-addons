@@ -228,11 +228,6 @@ Access full API documentation at: `http://your-ha-ip:5000/docs/`
 
 See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
-### Latest: v1.2.8
-- Complete English documentation
-- Fixed image display in Home Assistant
-- Consistent directory naming
-
 ## 🤝 Support
 
 - **Issues**: [GitHub Issues](https://github.com/pavelve/home-assistant-addons/issues)
