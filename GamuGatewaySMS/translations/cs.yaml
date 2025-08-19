@@ -1,0 +1,19 @@
+configuration:
+  device_path:
+    name: Cesta k zařízení
+    description: Cesta k vašemu GSM modemu (např. /dev/ttyUSB0)
+  pin:
+    name: PIN SIM karty
+    description: PIN kód SIM karty (nechte prázdné, pokud PIN není potřeba)
+  port:
+    name: Port API
+    description: Port pro REST API SMS Gateway
+  ssl:
+    name: Povolit SSL
+    description: Povolit HTTPS pro zabezpečené připojení (vyžaduje SSL certifikáty)
+  username:
+    name: Uživatelské jméno
+    description: Uživatelské jméno pro ověření API
+  password:
+    name: Heslo
+    description: Heslo pro ověření API
