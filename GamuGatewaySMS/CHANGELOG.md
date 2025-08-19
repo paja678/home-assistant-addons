@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.4] - 2025-01-19
+
+### Added
+- **Jednoduchá statusová stránka** - Nová přívětivá HTML stránka pro Home Assistant Ingress
+- **Externí Swagger odkaz** - Tlačítko pro otevření plné API dokumentace v nové záložce (port 5000)
+- **Český interface** - Lokalizované texty pro lepší uživatelský zážitek
+
+### Changed
+- **Swagger UI přesunut na /docs/** - Plnohodnotná dokumentace dostupná přes přímý přístup
+- **Optimalizované řešení** - Ingress zobrazuje jednoduchý status, Swagger zůstává funkční na portu 5000
+- **Lepší design** - Moderní, čistý vzhled statusové stránky
+
+### Fixed
+- **Definitivní řešení Web UI** - Kombinace jednoduché stránky pro Ingress + plný Swagger přes port
+- **Žádné více prázdné stránky** - Garantovaně funkční rozhraní v obou případech
+
 ## [1.1.3] - 2025-01-19
 
 ### Changed

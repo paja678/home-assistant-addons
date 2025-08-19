@@ -73,15 +73,110 @@ app = Flask(__name__)
 import os
 ingress_path = os.environ.get('INGRESS_PATH', '')
 
+# Create simple HTML page for Ingress
+@app.route('/')
+def home():
+    """Simple status page for Home Assistant Ingress"""
+    from flask import Response, request
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SMS Gammu Gateway</title>
+        <meta charset="utf-8">
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin: 0;
+                padding: 40px 20px;
+                background: #f5f5f5;
+                text-align: center;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 20px;
+                font-size: 2.2em;
+            }
+            .status {
+                background: #e8f5e9;
+                border: 2px solid #4caf50;
+                padding: 20px;
+                margin: 30px 0;
+                border-radius: 10px;
+                font-size: 1.2em;
+            }
+            .swagger-link {
+                display: inline-block;
+                padding: 15px 30px;
+                background: #2196F3;
+                color: white;
+                text-decoration: none;
+                border-radius: 8px;
+                margin: 20px 0;
+                font-size: 1.1em;
+                font-weight: bold;
+            }
+            .swagger-link:hover {
+                background: #1976D2;
+            }
+            .info {
+                background: #f0f8ff;
+                border-left: 4px solid #2196F3;
+                padding: 15px;
+                margin: 20px 0;
+                text-align: left;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📱 SMS Gammu Gateway</h1>
+            
+            <div class="status">
+                <strong>✅ Gateway běží v pořádku</strong><br>
+                Verze: 1.1.4
+            </div>
+            
+            <a href="http://''' + request.host.split(':')[0] + ''':5000/docs/" 
+               class="swagger-link" target="_blank">
+                📋 Otevřít Swagger API dokumentaci
+            </a>
+            
+            <div class="info">
+                <strong>REST API Endpointy:</strong><br>
+                • GET /status/signal - Síla signálu<br>
+                • GET /status/network - Informace o síti<br>
+                • POST /sms - Odeslat SMS (vyžaduje autentizaci)<br>
+                • GET /sms - Načíst všechny SMS (vyžaduje autentizaci)<br>
+                <br>
+                <strong>Autentizace ve Swagger UI:</strong><br>
+                1. Klikněte na tlačítko "Authorize" 🔒 v pravém horním rohu<br>
+                2. Zadejte Username a Password z konfigurace addon-u<br>
+                3. Klikněte "Authorize" - nyní můžete testovat chráněné endpointy
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    return Response(html, mimetype='text/html')
+
 # Swagger UI Configuration  
-# Put Swagger UI directly on root path for Ingress compatibility
+# Put Swagger UI on /docs/ path for direct access via port 5000
 api = Api(
     app, 
-    version='1.1.3',
+    version='1.1.4',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
-    doc='/',  # Put Swagger UI on root path
-    prefix='',  # No prefix needed
+    doc='/docs/',  # Swagger UI on /docs/ path
+    prefix='',
     authorizations={
         'basicAuth': {
             'type': 'basic',
@@ -273,7 +368,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.1.3 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.1.4 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")
