@@ -52,6 +52,14 @@ connection = at
         print("Warning: SIM card not accessible, but device is connected")
     except Exception as e:
         print(f"Error initializing device: {e}")
+        print("Available devices:")
+        import os
+        try:
+            devices = [d for d in os.listdir('/dev/') if d.startswith('tty')]
+            for device in sorted(devices):
+                print(f"  /dev/{device}")
+        except:
+            pass
         raise
         
     return sm
