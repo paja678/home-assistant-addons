@@ -143,10 +143,11 @@ def home():
             
             <div class="status">
                 <strong>✅ Gateway is running</strong><br>
-                Version: 1.1.1
+                Version: 1.1.2
             </div>
             
             <h2>Quick Links</h2>
+            <a href="docs/" class="button">📋 Swagger API Docs</a>
             <a href="status/signal" class="button">📊 Signal Strength</a>
             <a href="status/network" class="button">🌐 Network Info</a>
             
@@ -187,14 +188,14 @@ def home():
     return Response(html, mimetype='text/html', status=200, headers={'Content-Type': 'text/html; charset=utf-8'})
 
 # Swagger UI Configuration  
-# Disable Swagger UI to avoid routing conflicts with Ingress
+# Enable Swagger UI but move it to /docs path to avoid conflicts
 api = Api(
     app, 
-    version='1.1.1',
+    version='1.1.2',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
-    doc=False,  # Disable Swagger UI documentation
-    prefix=ingress_path,  # Add Ingress prefix if present
+    doc='/docs/',  # Move Swagger UI to /docs/ path
+    prefix='',  # Remove prefix to avoid double-prefixing
     authorizations={
         'basicAuth': {
             'type': 'basic',
@@ -386,7 +387,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.1.1 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.1.2 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")

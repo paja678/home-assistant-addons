@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2025-01-19
+
+### Added
+- **Swagger UI Restored** - Re-enabled professional Swagger API documentation at `/docs/` path
+- **Improved Navigation** - Added direct link to Swagger API docs from main page
+
+### Changed
+- **Better Web UI** - Now combines custom welcome page with full Swagger documentation
+- **Swagger Path** - Moved Swagger UI to `/docs/` to avoid Ingress routing conflicts
+- **Removed API Prefix** - Simplified routing by removing prefix parameter
+
+### Fixed
+- **Best of Both Worlds** - Users get both a friendly welcome page AND professional API documentation
+
 ## [1.1.1] - 2025-01-19
 
 ### Fixed
