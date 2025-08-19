@@ -222,40 +222,51 @@ class MQTTPublisher:
     
     def _handle_button_sms_send(self):
         """Handle SMS send when button is pressed using current text inputs"""
-        if not self.current_phone_number or not self.current_message_text:
+        # Log current state for debugging
+        logger.info(f"Button pressed - current state: phone='{self.current_phone_number}', message='{self.current_message_text}'")
+        
+        if not self.current_phone_number.strip() or not self.current_message_text.strip():
             # If fields are empty, show instruction
             if self.connected:
                 status_topic = f"{self.topic_prefix}/send_status"
                 status_data = {
-                    "status": "missing_fields",
-                    "message": "Please fill in phone number and message text first",
+                    "status": "missing_fields", 
+                    "message": f"Please fill in phone number and message text first. Current: phone='{self.current_phone_number}', message='{self.current_message_text}'",
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
                 }
                 self.client.publish(status_topic, json.dumps(status_data), retain=False)
-            logger.warning("Button pressed but phone number or message text is empty")
+            logger.warning(f"Button pressed but fields empty: phone='{self.current_phone_number}', message='{self.current_message_text}'")
             return
         
         # Send SMS using current values
         logger.info(f"Button SMS send: {self.current_phone_number} -> {self.current_message_text}")
         if hasattr(self, 'gammu_machine') and self.gammu_machine:
             self._send_sms_via_gammu(self.current_phone_number, self.current_message_text)
-            # Clear fields after successful send
+            # Always clear fields after send attempt (success or failure)
             self._clear_text_fields()
         else:
             logger.error("Gammu machine not available for SMS sending")
+            # Clear fields even if gammu not available
+            self._clear_text_fields()
     
     def _clear_text_fields(self):
         """Clear both fields for clean state after sending"""
-        # Clear both fields for consistency
+        # Always clear internal state
         self.current_phone_number = ""
         self.current_message_text = ""
-        if self.connected:
-            # Clear both fields in UI
-            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
-            message_state_topic = f"{self.topic_prefix}/message_text/state"
-            self.client.publish(phone_state_topic, "", retain=False)
-            self.client.publish(message_state_topic, "", retain=False)
-            logger.info("Cleared both text input fields")
+        
+        # Try to clear UI if connected
+        if self.connected and self.client:
+            try:
+                phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+                message_state_topic = f"{self.topic_prefix}/message_text/state"
+                self.client.publish(phone_state_topic, "", retain=False)
+                self.client.publish(message_state_topic, "", retain=False)
+                logger.info("Cleared both text input fields (internal + UI)")
+            except Exception as e:
+                logger.warning(f"Could not clear UI fields, but internal state cleared: {e}")
+        else:
+            logger.info("Cleared both text input fields (internal state only)")
     
     def _publish_phone_state(self, value):
         """Publish phone number state"""
@@ -447,7 +458,7 @@ class MQTTPublisher:
         topic = f"{self.topic_prefix}/sms/state"
         self.client.publish(topic, json.dumps(sms_data))
         
-        logger.info(f"📡 Published SMS to MQTT: {sms_data.get('Number', 'Unknown')} -> {sms_data.get('Text', '')[:50]}...")
+        logger.info(f"📡 Published SMS to MQTT: {sms_data.get('Number', 'Unknown')} -> {sms_data.get('Text', '')}")
     
     def _publish_initial_states(self):
         """Publish initial sensor states on startup"""

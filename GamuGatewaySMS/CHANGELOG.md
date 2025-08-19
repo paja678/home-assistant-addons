@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3] - 2025-01-19
+
+### Fixed
+- **Text Field Clearing** - Both phone number and message fields now clear reliably after sending
+- **Field Validation** - Better handling of empty fields with detailed logging for debugging
+- **UI Synchronization** - Improved clearing of both internal state and UI fields
+
+### Changed
+- **SMSC Configuration Removed** - No longer needed since REST API logic works without it
+- **Enhanced Logging** - SMS logs now show full message text instead of truncated version
+- **Better Error Messages** - Field validation shows exact current values for debugging
+
+### Removed
+- SMSC Number configuration field (no longer needed)
+- SMSC fallback mechanism (simplified to use Location 1 like REST API)
+
 ## [1.2.2] - 2025-01-19
 
 ### Fixed
