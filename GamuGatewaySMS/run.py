@@ -144,7 +144,7 @@ def home():
             
             <div class="status">
                 <strong>✅ Gateway is running properly</strong><br>
-                Version: 1.2.4
+                Version: 1.2.5
             </div>
             
             <a href="http://''' + request.host.split(':')[0] + ''':5000/docs/" 
@@ -174,7 +174,7 @@ def home():
 # Put Swagger UI on /docs/ path for direct access via port 5000
 api = Api(
     app, 
-    version='1.2.4',
+    version='1.2.5',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.). Modern replacement for deprecated SMS notifications via GSM-modem integration.',
     doc='/docs/',  # Swagger UI on /docs/ path
@@ -261,12 +261,24 @@ class SmsCollection(Resource):
     def post(self):
         """Send SMS message(s)"""
         parser = reqparse.RequestParser()
-        parser.add_argument('text', required=True, help='SMS message text')
-        parser.add_argument('number', required=True, help='Phone number(s), comma separated')
+        parser.add_argument('text', required=False, help='SMS message text')
+        parser.add_argument('message', required=False, help='SMS message text (alias for text)')
+        parser.add_argument('number', required=False, help='Phone number(s), comma separated')
+        parser.add_argument('target', required=False, help='Phone number (alias for number)')
         parser.add_argument('smsc', required=False, help='SMS Center number (optional)')
         parser.add_argument('unicode', type=bool, required=False, default=False, help='Use Unicode encoding')
         
         args = parser.parse_args()
+        
+        # Support both 'text' and 'message' parameters
+        sms_text = args.get('text') or args.get('message')
+        if not sms_text:
+            return {"status": 400, "message": "Missing required field: text or message"}, 400
+        
+        # Support both 'number' and 'target' parameters
+        sms_number = args.get('number') or args.get('target')
+        if not sms_number:
+            return {"status": 400, "message": "Missing required field: number or target"}, 400
         
         smsinfo = {
             "Class": -1,
@@ -274,12 +286,12 @@ class SmsCollection(Resource):
             "Entries": [
                 {
                     "ID": "ConcatenatedTextLong",
-                    "Buffer": args['text'],
+                    "Buffer": sms_text,
                 }
             ],
         }
         messages = []
-        for number in args.get("number").split(','):
+        for number in sms_number.split(','):
             for message in encodeSms(smsinfo):
                 message["SMSC"] = {'Number': args.get("smsc")} if args.get("smsc") else {'Location': 1}
                 message["Number"] = number.strip()
@@ -370,7 +382,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.2.4 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.2.5 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")

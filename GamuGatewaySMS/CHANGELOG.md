@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.5] - 2025-01-19
+
+### Fixed
+- **REST API Notify Compatibility** - API now accepts both standard and Home Assistant notify parameters
+- **Parameter Aliases** - Supports `text`/`message` and `number`/`target` interchangeably
+- **Home Assistant Notify Integration** - Full compatibility with HA REST notify platform
+
+### Changed
+- REST API endpoint now accepts multiple parameter names for better compatibility
+- Better error messages when required fields are missing
+
+### Technical Details
+- `POST /sms` accepts: `text` or `message` for SMS content
+- `POST /sms` accepts: `number` or `target` for phone number
+- Maintains backward compatibility with existing integrations
+
 ## [1.2.4] - 2025-01-19
 
 ### Fixed

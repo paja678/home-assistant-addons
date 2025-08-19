@@ -148,7 +148,7 @@ notify:
     username: admin
     password: your_password
     target_param_name: number
-    message_param_name: text
+    message_param_name: message
 ```
 
 ### Signal Strength Sensor
