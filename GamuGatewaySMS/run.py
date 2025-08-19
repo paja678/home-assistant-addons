@@ -47,7 +47,9 @@ def load_ha_config():
             'mqtt_port': 1883,
             'mqtt_username': '',
             'mqtt_password': '',
-            'mqtt_topic_prefix': 'homeassistant/sensor/sms_gateway'
+            'mqtt_topic_prefix': 'homeassistant/sensor/sms_gateway',
+            'sms_monitoring_enabled': True,
+            'sms_check_interval': 60
         }
 
 # Load configuration
@@ -67,13 +69,132 @@ mqtt_publisher = MQTTPublisher(config)
 
 app = Flask(__name__)
 
+# Check if running under Ingress
+import os
+ingress_path = os.environ.get('INGRESS_PATH', '')
+
+# Define root route BEFORE Flask-RESTX initialization to ensure it takes precedence
+@app.route('/')
+def home():
+    """Root page handler - defined early to ensure it's registered first"""
+    from flask import Response
+    html = '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SMS Gammu Gateway</title>
+        <meta charset="utf-8">
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: #f5f5f5;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 10px;
+            }
+            .status {
+                background: #e8f5e9;
+                border-left: 4px solid #4caf50;
+                padding: 15px;
+                margin: 20px 0;
+            }
+            .endpoints {
+                background: #f5f5f5;
+                padding: 20px;
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .endpoint {
+                background: white;
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 3px;
+                font-family: monospace;
+            }
+            .button {
+                display: inline-block;
+                padding: 10px 20px;
+                background: #2196F3;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 10px 10px 10px 0;
+            }
+            .button:hover {
+                background: #1976D2;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📱 SMS Gammu Gateway</h1>
+            <p>REST API for sending and receiving SMS messages via USB GSM modems</p>
+            
+            <div class="status">
+                <strong>✅ Gateway is running</strong><br>
+                Version: 1.1.1
+            </div>
+            
+            <h2>Quick Links</h2>
+            <a href="status/signal" class="button">📊 Signal Strength</a>
+            <a href="status/network" class="button">🌐 Network Info</a>
+            
+            <h2>API Endpoints</h2>
+            <div class="endpoints">
+                <div class="endpoint">
+                    <strong>GET /status/signal</strong> - Get signal strength (public)
+                </div>
+                <div class="endpoint">
+                    <strong>GET /status/network</strong> - Get network info (public)
+                </div>
+                <div class="endpoint">
+                    <strong>POST /sms</strong> - Send SMS (requires auth)
+                </div>
+                <div class="endpoint">
+                    <strong>GET /sms</strong> - Get all SMS (requires auth)
+                </div>
+                <div class="endpoint">
+                    <strong>GET /sms/{id}</strong> - Get specific SMS (requires auth)
+                </div>
+                <div class="endpoint">
+                    <strong>DELETE /sms/{id}</strong> - Delete SMS (requires auth)
+                </div>
+                <div class="endpoint">
+                    <strong>GET /getsms</strong> - Get and delete first SMS (requires auth)
+                </div>
+                <div class="endpoint">
+                    <strong>GET /status/reset</strong> - Reset modem (public)
+                </div>
+            </div>
+            
+            <h2>Authentication</h2>
+            <p>Protected endpoints require HTTP Basic Authentication with your configured username and password.</p>
+        </div>
+    </body>
+    </html>
+    '''
+    return Response(html, mimetype='text/html', status=200, headers={'Content-Type': 'text/html; charset=utf-8'})
+
 # Swagger UI Configuration  
+# Disable Swagger UI to avoid routing conflicts with Ingress
 api = Api(
     app, 
-    version='1.0.9',
+    version='1.1.1',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
-    doc='/',  # Change to root for Ingress compatibility
+    doc=False,  # Disable Swagger UI documentation
+    prefix=ingress_path,  # Add Ingress prefix if present
     authorizations={
         'basicAuth': {
             'type': 'basic',
@@ -134,9 +255,6 @@ reset_response = api.model('Reset Response', {
 # API Namespaces
 ns_sms = api.namespace('sms', description='SMS operations (requires authentication)')
 ns_status = api.namespace('status', description='Device status and information (public)')
-
-# Root is now handled by Swagger API (doc='/') 
-# No need for separate redirect
 
 @ns_sms.route('')
 @ns_sms.doc('sms_operations')
@@ -268,10 +386,10 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.0.9 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.1.1 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
-    print(f"📋 Swagger UI: http://localhost:{port}/docs/")
+    print(f"🏠 Web UI: http://localhost:{port}/")
     print(f"🔒 SSL: {'Enabled' if ssl else 'Disabled'}")
     
     # MQTT info
@@ -286,8 +404,13 @@ if __name__ == '__main__':
         # Start periodic MQTT publishing
         mqtt_publisher.publish_status_periodic(machine, interval=300)  # 5 minutes
         
-        # Start SMS monitoring
-        mqtt_publisher.start_sms_monitoring(machine, check_interval=60)  # Check every minute
+        # Start SMS monitoring if enabled
+        if config.get('sms_monitoring_enabled', True):
+            check_interval = config.get('sms_check_interval', 60)
+            mqtt_publisher.start_sms_monitoring(machine, check_interval=check_interval)
+            print(f"📱 SMS Monitoring: Enabled (check every {check_interval}s)")
+        else:
+            print(f"📱 SMS Monitoring: Disabled")
     else:
         print(f"📡 MQTT: Disabled")
     

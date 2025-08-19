@@ -239,7 +239,9 @@ class MQTTPublisher:
                 
                 time.sleep(check_interval)
         
-        if self.config.get('mqtt_enabled', False):
+        # Only start if both MQTT and SMS monitoring are enabled  
+        if (self.config.get('mqtt_enabled', False) and 
+            self.config.get('sms_monitoring_enabled', True)):
             thread = threading.Thread(target=_sms_monitor_loop, daemon=True)
             thread.start()
     

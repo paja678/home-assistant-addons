@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2025-01-19
+
+### Fixed
+- **Web UI Ingress Routing** - Completely fixed the blank page issue when accessing through Home Assistant's "Open Web UI" button
+- **Route Priority** - Root route now properly defined before Flask-RESTX initialization to ensure correct handling
+- **HTML Response Headers** - Added proper Content-Type headers with UTF-8 charset
+- **Removed Conflicting Routes** - Removed catch-all handler that was conflicting with API endpoints
+
+### Changed
+- Simplified routing logic by defining root handler early in application initialization
+- Removed target="_blank" from internal navigation buttons for better Ingress compatibility
+- Consolidated HTML generation into the root route handler
+
+## [1.1.0] - 2025-01-19
+
+### Added
+- **SMS Monitoring Toggle** - New configuration option to enable/disable automatic SMS detection  
+- **Configurable Check Interval** - Adjust SMS monitoring frequency (30-300 seconds)
+- **Enhanced SMS Storage** - SMS messages stored in HA database with full history
+- **SMS Sensor Attributes** - Date, Number, Text, Timestamp available as sensor attributes
+
+### Changed
+- SMS monitoring is now optional with default enabled
+- SMS check interval configurable (default: 60 seconds)
+- Improved logging with monitoring status display
+- Better error handling for SMS monitoring thread
+
+### Fixed
+- SMS monitoring now respects configuration settings
+- Proper dependency checking between MQTT and SMS monitoring
+
 ## [1.0.9] - 2025-01-19
 
 ### Added

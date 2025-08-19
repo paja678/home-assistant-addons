@@ -35,3 +35,9 @@ configuration:
   mqtt_topic_prefix:
     name: MQTT Topic Prefix
     description: Prefix pro MQTT topicy publikovaných zpráv
+  sms_monitoring_enabled:
+    name: Povolit SMS Monitoring
+    description: Automaticky detekovat a publikovat příchozí SMS zprávy do MQTT
+  sms_check_interval:
+    name: Interval Kontroly SMS
+    description: Jak často kontrolovat nové SMS zprávy (sekundy, 30-300)

@@ -35,3 +35,9 @@ configuration:
   mqtt_topic_prefix:
     name: MQTT Topic Prefix
     description: MQTT topic prefix for published messages
+  sms_monitoring_enabled:
+    name: Enable SMS Monitoring
+    description: Automatically detect and publish incoming SMS messages to MQTT
+  sms_check_interval:
+    name: SMS Check Interval
+    description: How often to check for new SMS messages (seconds, 30-300)
