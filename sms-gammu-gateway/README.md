@@ -114,7 +114,7 @@ Enable MQTT in configuration and the add-on will automatically create:
 
 All entities appear under device **"SMS Gateway"** in Home Assistant.
 
-![MQTT Device Overview](./images/mqtt-device.png)
+![MQTT Device Overview](https://raw.githubusercontent.com/pavelve/home-assistant-addons/main/sms-gammu-gateway/images/mqtt-device.png)
 
 ### Method 2: RESTful Notify
 
@@ -133,7 +133,7 @@ notify:
     message_param_name: message
 ```
 
-![Actions Notify Example](./images/actions-notify.png)
+![Actions Notify Example](https://raw.githubusercontent.com/pavelve/home-assistant-addons/main/sms-gammu-gateway/images/actions-notify.png)
 
 ### Method 3: Direct Service Calls
 
@@ -185,7 +185,7 @@ curl -X POST http://192.168.1.x:5000/sms \
 ### Swagger UI
 Access full API documentation at: `http://your-ha-ip:5000/docs/`
 
-![Swagger UI Documentation](./images/swagger-ui.png)
+![Swagger UI Documentation](https://raw.githubusercontent.com/pavelve/home-assistant-addons/main/sms-gammu-gateway/images/swagger-ui.png)
 
 ### Main Endpoints
 

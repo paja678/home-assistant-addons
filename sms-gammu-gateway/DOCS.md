@@ -243,20 +243,7 @@ notify:
 
 ## 📝 Version History
 
-### v1.2.6 (Latest)
-- ✅ Phone number persists after sending
-- ✅ Only message text clears
-- ✅ Better UX for multiple messages
-
-### v1.2.5
-- ✅ HA notify compatibility
-- ✅ Support for message/text and target/number parameters
-
-### v1.2.4
-- ✅ Fixed UI/backend synchronization
-- ✅ Retained MQTT messages
-
-[Complete changelog](./CHANGELOG.md)
+See [CHANGELOG.md](./CHANGELOG.md) for complete version history and detailed changes.
 
 ## 🆘 Support
 
