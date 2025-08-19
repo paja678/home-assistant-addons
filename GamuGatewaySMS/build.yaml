@@ -7,7 +7,7 @@ build_from:
 labels:
   org.opencontainers.image.title: "SMS Gammu Gateway"
   org.opencontainers.image.description: "REST API SMS Gateway using python-gammu for USB GSM modems"
-  org.opencontainers.image.source: "https://github.com/pavelve/home-assistant-addons"
+  org.opencontainers.image.source: "https://github.com/PavelVe/home-assistant-addons"
   org.opencontainers.image.authors: "PavelVe"
   org.opencontainers.image.licenses: "Apache-2.0"
 args:
