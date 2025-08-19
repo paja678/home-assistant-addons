@@ -17,3 +17,21 @@ configuration:
   password:
     name: Heslo
     description: Heslo pro ověření API
+  mqtt_enabled:
+    name: Povolit MQTT
+    description: Publikovat SMS a stav zařízení do MQTT brokeru
+  mqtt_host:
+    name: MQTT Host
+    description: Hostname MQTT brokeru (použijte 'core-mosquitto' pro vestavěný HA broker)
+  mqtt_port:
+    name: MQTT Port
+    description: Port MQTT brokeru (obvykle 1883)
+  mqtt_username:
+    name: MQTT Uživatel
+    description: Uživatelské jméno pro MQTT (nechte prázdné, pokud není potřeba)
+  mqtt_password:
+    name: MQTT Heslo
+    description: Heslo pro MQTT (nechte prázdné, pokud není potřeba)
+  mqtt_topic_prefix:
+    name: MQTT Topic Prefix
+    description: Prefix pro MQTT topicy publikovaných zpráv

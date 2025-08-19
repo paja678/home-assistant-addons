@@ -15,6 +15,7 @@ from flask_httpauth import HTTPBasicAuth
 from flask_restx import Api, Resource, fields, reqparse
 
 from support import init_state_machine, retrieveAllSms, deleteSms, encodeSms
+from mqtt_publisher import MQTTPublisher
 from gammu import GSMNetworks
 
 # Suppress Flask development server warning
@@ -35,7 +36,13 @@ def load_ha_config():
             'port': 5000,
             'ssl': False,
             'username': 'admin',
-            'password': 'password'
+            'password': 'password',
+            'mqtt_enabled': False,
+            'mqtt_host': 'localhost',
+            'mqtt_port': 1883,
+            'mqtt_username': '',
+            'mqtt_password': '',
+            'mqtt_topic_prefix': 'homeassistant/sensor/sms_gateway'
         }
 
 # Load configuration
@@ -49,6 +56,10 @@ device_path = config.get('device_path', '/dev/ttyUSB0')
 
 # Initialize gammu state machine
 machine = init_state_machine(pin, device_path)
+
+# Initialize MQTT publisher
+mqtt_publisher = MQTTPublisher(config)
+
 app = Flask(__name__)
 
 # Swagger UI Configuration
@@ -118,6 +129,13 @@ reset_response = api.model('Reset Response', {
 # API Namespaces
 ns_sms = api.namespace('sms', description='SMS operations (requires authentication)')
 ns_status = api.namespace('status', description='Device status and information (public)')
+
+# Add root route for Ingress compatibility
+@app.route('/')
+def index():
+    """Redirect root to Swagger documentation"""
+    from flask import redirect
+    return redirect('/docs/')
 
 @ns_sms.route('')
 @ns_sms.doc('sms_operations')
@@ -208,6 +226,9 @@ class GetSms(Resource):
             sms = allSms[0]
             deleteSms(machine, sms)
             sms.pop("Locations", None)
+            # Publish to MQTT if enabled and SMS has content
+            if sms.get("Text"):
+                mqtt_publisher.publish_sms_received(sms)
         return sms
 
 @ns_status.route('/signal')
@@ -217,7 +238,10 @@ class Signal(Resource):
     @ns_status.marshal_with(signal_response)
     def get(self):
         """Get GSM signal strength and quality"""
-        return machine.GetSignalQuality()
+        signal_data = machine.GetSignalQuality()
+        # Publish to MQTT if enabled
+        mqtt_publisher.publish_signal_strength(signal_data)
+        return signal_data
 
 @ns_status.route('/network')
 @ns_status.doc('get_network_info')
@@ -228,6 +252,8 @@ class Network(Resource):
         """Get network operator and registration information"""
         network = machine.GetNetworkInfo()
         network["NetworkName"] = GSMNetworks.get(network.get("NetworkCode", ""), 'Unknown')
+        # Publish to MQTT if enabled
+        mqtt_publisher.publish_network_info(network)
         return network
 
 @ns_status.route('/reset')
@@ -241,15 +267,28 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.0.4 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.0.5 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"📋 Swagger UI: http://localhost:{port}/docs/")
     print(f"🔒 SSL: {'Enabled' if ssl else 'Disabled'}")
+    
+    # MQTT info
+    if config.get('mqtt_enabled', False):
+        print(f"📡 MQTT: Enabled -> {config.get('mqtt_host')}:{config.get('mqtt_port')}")
+        # Start periodic MQTT publishing
+        mqtt_publisher.publish_status_periodic(machine, interval=300)  # 5 minutes
+    else:
+        print(f"📡 MQTT: Disabled")
+    
     print(f"✅ Ready to send/receive SMS messages")
     
-    if ssl:
-        app.run(port=port, host="0.0.0.0", ssl_context=('/ssl/cert.pem', '/ssl/key.pem'),
-                debug=False, use_reloader=False)
-    else:
-        app.run(port=port, host="0.0.0.0", debug=False, use_reloader=False)
+    try:
+        if ssl:
+            app.run(port=port, host="0.0.0.0", ssl_context=('/ssl/cert.pem', '/ssl/key.pem'),
+                    debug=False, use_reloader=False)
+        else:
+            app.run(port=port, host="0.0.0.0", debug=False, use_reloader=False)
+    finally:
+        # Cleanup MQTT connection
+        mqtt_publisher.disconnect()

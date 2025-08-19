@@ -17,3 +17,21 @@ configuration:
   password:
     name: Password
     description: Password for API authentication
+  mqtt_enabled:
+    name: Enable MQTT
+    description: Publish SMS and device status to MQTT broker
+  mqtt_host:
+    name: MQTT Host
+    description: MQTT broker hostname (use 'core-mosquitto' for HA built-in broker)
+  mqtt_port:
+    name: MQTT Port
+    description: MQTT broker port (usually 1883)
+  mqtt_username:
+    name: MQTT Username
+    description: MQTT authentication username (leave empty if not required)
+  mqtt_password:
+    name: MQTT Password
+    description: MQTT authentication password (leave empty if not required)
+  mqtt_topic_prefix:
+    name: MQTT Topic Prefix
+    description: MQTT topic prefix for published messages

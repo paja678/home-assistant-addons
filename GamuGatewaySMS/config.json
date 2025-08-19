@@ -1,6 +1,6 @@
 {
   "name": "SMS Gammu Gateway",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "slug": "sms_gammu_gateway",
   "description": "REST API SMS Gateway using python-gammu for USB GSM modems (SIM800L, Huawei, etc.)",
   "startup": "services",
@@ -15,7 +15,13 @@
     "port": 5000,
     "ssl": false,
     "username": "admin",
-    "password": "password"
+    "password": "password",
+    "mqtt_enabled": false,
+    "mqtt_host": "core-mosquitto",
+    "mqtt_port": 1883,
+    "mqtt_username": "",
+    "mqtt_password": "",
+    "mqtt_topic_prefix": "homeassistant/sensor/sms_gateway"
   },
   "schema": {
     "device_path": "str",
@@ -23,7 +29,13 @@
     "port": "int(1,65535)",
     "ssl": "bool",
     "username": "str",
-    "password": "str"
+    "password": "str",
+    "mqtt_enabled": "bool",
+    "mqtt_host": "str",
+    "mqtt_port": "int(1,65535)",
+    "mqtt_username": "str?",
+    "mqtt_password": "str?",
+    "mqtt_topic_prefix": "str"
   },
   "ingress": true,
   "ingress_port": 5000,

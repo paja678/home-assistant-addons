@@ -3,3 +3,4 @@ flask
 flask-restx
 Flask-HTTPAuth
 pyopenssl
+paho-mqtt
