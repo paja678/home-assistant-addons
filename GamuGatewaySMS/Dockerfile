@@ -31,7 +31,9 @@ RUN pip3 install --break-system-packages --no-cache-dir -r requirements.txt
 # Copy application files
 COPY run.py .
 COPY support.py .
+COPY mqtt_publisher.py .
 COPY run.sh .
+COPY icon.png .
 
 # Make run script executable
 RUN chmod +x run.sh
@@ -44,7 +46,7 @@ LABEL \
     io.hass.name="SMS Gammu Gateway" \
     io.hass.description="REST API SMS Gateway using python-gammu for USB GSM modems" \
     io.hass.type="addon" \
-    io.hass.version="1.0.5" \
+    io.hass.version="1.0.7" \
     maintainer="PavelVe"
 
 # Run

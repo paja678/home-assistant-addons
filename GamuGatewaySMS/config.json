@@ -1,12 +1,12 @@
 {
   "name": "SMS Gammu Gateway",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "slug": "sms_gammu_gateway",
   "description": "REST API SMS Gateway using python-gammu for USB GSM modems (SIM800L, Huawei, etc.)",
   "startup": "services",
   "arch": ["amd64", "i386", "aarch64", "armv7", "armhf"],
   "boot": "auto",
-  "panel_icon": "mdi:message-text",
+  "panel_icon": "mdi:cellphone-message",
   "url": "https://github.com/pavelve/home-assistant-addons/blob/main/GamuGatewaySMS/README.md",
   "homeassistant": "2022.1.1",
   "options": {

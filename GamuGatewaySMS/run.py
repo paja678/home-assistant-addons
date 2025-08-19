@@ -267,7 +267,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.0.5 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.0.7 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"📋 Swagger UI: http://localhost:{port}/docs/")
