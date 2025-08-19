@@ -228,10 +228,10 @@ Access full API documentation at: `http://your-ha-ip:5000/docs/`
 
 See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
-### Latest: v1.2.6
-- Smart field clearing (phone persists, message clears)
-- Full MQTT/REST compatibility
-- Fixed UI/backend synchronization
+### Latest: v1.2.8
+- Complete English documentation
+- Fixed image display in Home Assistant
+- Consistent directory naming
 
 ## 🤝 Support
 
