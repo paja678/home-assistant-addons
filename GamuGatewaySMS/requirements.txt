@@ -1,5 +1,5 @@
 python-gammu
 flask
-flask-restful
+flask-restx
 Flask-HTTPAuth
 pyopenssl
