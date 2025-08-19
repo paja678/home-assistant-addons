@@ -187,13 +187,22 @@ class MQTTPublisher:
                 self.client.publish(status_topic, json.dumps(status_data), retain=False)
                 
         except Exception as e:
-            logger.error(f"Failed to send SMS via gammu: {e}")
-            # Publish error status
+            error_msg = str(e)
+            # Try to extract useful error message from gammu error
+            if "Code': 27" in error_msg:
+                user_error = "SMS sending failed - check SIM card, network signal or device connection"
+            elif "Code': 38" in error_msg:
+                user_error = "Network registration failed - check SIM card and signal"
+            else:
+                user_error = f"SMS sending error: {error_msg}"
+            
+            logger.error(f"Failed to send SMS via gammu: {error_msg}")
+            # Publish error status with user-friendly message
             if self.connected:
                 status_topic = f"{self.topic_prefix}/send_status"
                 status_data = {
                     "status": "error",
-                    "error": str(e),
+                    "error": user_error,
                     "number": number,
                     "text": text,
                     "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
@@ -225,16 +234,14 @@ class MQTTPublisher:
             logger.error("Gammu machine not available for SMS sending")
     
     def _clear_text_fields(self):
-        """Clear phone number and message text fields"""
-        self.current_phone_number = ""
+        """Clear only message text field, keep phone number for convenience"""
+        # Keep phone number, clear only message
         self.current_message_text = ""
         if self.connected:
-            # Publish empty states to clear UI
-            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+            # Clear only message text in UI
             message_state_topic = f"{self.topic_prefix}/message_text/state"
-            self.client.publish(phone_state_topic, "", retain=False)
             self.client.publish(message_state_topic, "", retain=False)
-            logger.info("Cleared text input fields")
+            logger.info("Cleared message text field (kept phone number)")
     
     def _publish_phone_state(self, value):
         """Publish phone number state"""
@@ -247,6 +254,15 @@ class MQTTPublisher:
         if self.connected:
             state_topic = f"{self.topic_prefix}/message_text/state"
             self.client.publish(state_topic, value, retain=False)
+    
+    def _publish_empty_text_fields(self):
+        """Initialize text fields with empty values on startup"""
+        if self.connected:
+            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+            message_state_topic = f"{self.topic_prefix}/message_text/state"
+            self.client.publish(phone_state_topic, "", retain=True)  # Use retain for initial state
+            self.client.publish(message_state_topic, "", retain=True)  # Use retain for initial state
+            logger.info("Initialized text fields with empty values")
     
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""
@@ -384,6 +400,9 @@ class MQTTPublisher:
         
         # Publish initial states immediately after discovery
         self._publish_initial_states()
+        
+        # Initialize text fields with empty values
+        self._publish_empty_text_fields()
     
     def publish_signal_strength(self, signal_data: Dict[str, Any]):
         """Publish signal strength data"""

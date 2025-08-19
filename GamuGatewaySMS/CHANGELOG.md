@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.9] - 2025-01-19
+
+### Fixed
+- **Empty Fields on Startup** - Text fields now start empty instead of showing "unknown"
+- **Smart Field Clearing** - Only message text clears after send, phone number stays for convenience
+- **Better Error Messages** - User-friendly SMS error messages instead of raw gammu codes
+- **Gammu Error Code 27** - Now shows "check SIM card, network signal or device connection"
+
+### Improved User Experience:
+- Phone number persists between messages (convenient for multiple messages to same recipient)
+- Clear error feedback when SMS fails
+- Clean initial state without confusing "unknown" values
+
+### Technical Details:
+- Added `_publish_empty_text_fields()` for proper initialization
+- Enhanced error handling with specific gammu error code interpretation
+- Improved field clearing logic to keep phone number
+
 ## [1.1.8] - 2025-01-19
 
 ### Added
