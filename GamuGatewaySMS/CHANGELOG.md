@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2025-01-19
+
+### Fixed
+- **Critical UI/Backend Sync** - Text fields now properly synchronize between Home Assistant UI and backend state
+- **Retained Message Handling** - Both clearing and initialization now use `retain=True` to override cached values
+- **State Topic Subscription** - Backend now subscribes to state topics to read current HA values on startup
+- **Bidirectional Sync** - Reads HA state on connect AND forces empty state with proper timing
+
+### Changed
+- **Enhanced MQTT Sync** - Added subscription to both command and state topics for full synchronization
+- **Timing Improvements** - Added delays to ensure proper HA discovery processing before state sync
+- **Better Logging** - Clear indicators when fields are synced vs. forced to empty state
+
+### Technical Details
+- Subscribe to `/state` topics in addition to `/set` topics
+- Use `retain=True` for all state publications to override cached values
+- Added proper timing sequence: discovery → wait → force empty → wait → sync
+
 ## [1.2.3] - 2025-01-19
 
 ### Fixed

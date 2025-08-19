@@ -77,9 +77,14 @@ class MQTTPublisher:
             # Subscribe to text input topics
             phone_topic = f"{self.topic_prefix}/phone_number/set"
             message_topic = f"{self.topic_prefix}/message_text/set"
+            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+            message_state_topic = f"{self.topic_prefix}/message_text/state"
+            
             client.subscribe(phone_topic)
             client.subscribe(message_topic)
-            logger.info(f"Subscribed to text input topics: {phone_topic}, {message_topic}")
+            client.subscribe(phone_state_topic)  # Subscribe to state topics too
+            client.subscribe(message_state_topic)
+            logger.info(f"Subscribed to text input topics: {phone_topic}, {message_topic}, {phone_state_topic}, {message_state_topic}")
         else:
             logger.error(f"Failed to connect to MQTT broker: {rc}")
     
@@ -104,6 +109,8 @@ class MQTTPublisher:
             button_topic = f"{self.topic_prefix}/send_button"
             phone_topic = f"{self.topic_prefix}/phone_number/set"
             message_topic = f"{self.topic_prefix}/message_text/set"
+            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
+            message_state_topic = f"{self.topic_prefix}/message_text/state"
             
             if topic == send_topic:
                 self._handle_sms_send_command(payload)
@@ -111,15 +118,23 @@ class MQTTPublisher:
                 # Button pressed - send SMS using current text inputs
                 self._handle_button_sms_send()
             elif topic == phone_topic:
-                # Phone number updated
+                # Phone number updated via command topic
                 self.current_phone_number = payload
                 self._publish_phone_state(payload)
-                logger.info(f"Phone number updated: {payload}")
+                logger.info(f"Phone number updated via command: {payload}")
             elif topic == message_topic:
-                # Message text updated
+                # Message text updated via command topic
                 self.current_message_text = payload
                 self._publish_message_state(payload)
-                logger.info(f"Message text updated: {payload}")
+                logger.info(f"Message text updated via command: {payload}")
+            elif topic == phone_state_topic:
+                # Phone number state received (sync with HA)
+                self.current_phone_number = payload
+                logger.info(f"Phone number synced from HA state: {payload}")
+            elif topic == message_state_topic:
+                # Message text state received (sync with HA)
+                self.current_message_text = payload
+                logger.info(f"Message text synced from HA state: {payload}")
                 
         except Exception as e:
             logger.error(f"Error processing MQTT message: {e}")
@@ -260,13 +275,14 @@ class MQTTPublisher:
             try:
                 phone_state_topic = f"{self.topic_prefix}/phone_number/state"
                 message_state_topic = f"{self.topic_prefix}/message_text/state"
-                self.client.publish(phone_state_topic, "", retain=False)
-                self.client.publish(message_state_topic, "", retain=False)
-                logger.info("Cleared both text input fields (internal + UI)")
+                # Use retain=True to ensure HA gets the clear state
+                self.client.publish(phone_state_topic, "", retain=True)
+                self.client.publish(message_state_topic, "", retain=True)
+                logger.info("🧹 Cleared both text input fields (internal + UI with retain=True)")
             except Exception as e:
                 logger.warning(f"Could not clear UI fields, but internal state cleared: {e}")
         else:
-            logger.info("Cleared both text input fields (internal state only)")
+            logger.info("🧹 Cleared both text input fields (internal state only)")
     
     def _publish_phone_state(self, value):
         """Publish phone number state"""
@@ -281,13 +297,20 @@ class MQTTPublisher:
             self.client.publish(state_topic, value, retain=False)
     
     def _publish_empty_text_fields(self):
-        """Initialize text fields with empty values on startup"""
+        """Force text fields to empty state on startup with retain"""
         if self.connected:
             phone_state_topic = f"{self.topic_prefix}/phone_number/state"
             message_state_topic = f"{self.topic_prefix}/message_text/state"
-            self.client.publish(phone_state_topic, "", retain=True)  # Use retain for initial state
-            self.client.publish(message_state_topic, "", retain=True)  # Use retain for initial state
-            logger.info("Initialized text fields with empty values")
+            
+            # Force empty state with retain=True to override any cached values
+            self.client.publish(phone_state_topic, "", retain=True)
+            self.client.publish(message_state_topic, "", retain=True)
+            
+            # Also ensure internal state is empty
+            self.current_phone_number = ""
+            self.current_message_text = ""
+            
+            logger.info("🔄 Forced text fields to empty state with retain=True (UI sync)")
     
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""
@@ -426,8 +449,13 @@ class MQTTPublisher:
         # Publish initial states immediately after discovery
         self._publish_initial_states()
         
-        # Initialize text fields with empty values
+        # Wait a moment for HA to process discovery, then force empty text fields
+        import time
+        time.sleep(1)
         self._publish_empty_text_fields()
+        
+        # Give HA another moment to send retained state messages back to us
+        time.sleep(0.5)
     
     def publish_signal_strength(self, signal_data: Dict[str, Any]):
         """Publish signal strength data"""
