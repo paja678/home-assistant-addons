@@ -66,6 +66,8 @@ machine = init_state_machine(pin, device_path)
 
 # Initialize MQTT publisher
 mqtt_publisher = MQTTPublisher(config)
+# Set gammu machine for MQTT SMS sending
+mqtt_publisher.set_gammu_machine(machine)
 
 app = Flask(__name__)
 
@@ -141,26 +143,26 @@ def home():
             <h1>📱 SMS Gammu Gateway</h1>
             
             <div class="status">
-                <strong>✅ Gateway běží v pořádku</strong><br>
-                Verze: 1.1.4
+                <strong>✅ Gateway is running properly</strong><br>
+                Version: 1.1.5
             </div>
             
             <a href="http://''' + request.host.split(':')[0] + ''':5000/docs/" 
                class="swagger-link" target="_blank">
-                📋 Otevřít Swagger API dokumentaci
+                📋 Open Swagger API Documentation
             </a>
             
             <div class="info">
-                <strong>REST API Endpointy:</strong><br>
-                • GET /status/signal - Síla signálu<br>
-                • GET /status/network - Informace o síti<br>
-                • POST /sms - Odeslat SMS (vyžaduje autentizaci)<br>
-                • GET /sms - Načíst všechny SMS (vyžaduje autentizaci)<br>
+                <strong>REST API Endpoints:</strong><br>
+                • GET /status/signal - Signal strength<br>
+                • GET /status/network - Network information<br>
+                • POST /sms - Send SMS (requires authentication)<br>
+                • GET /sms - Get all SMS (requires authentication)<br>
                 <br>
-                <strong>Autentizace ve Swagger UI:</strong><br>
-                1. Klikněte na tlačítko "Authorize" 🔒 v pravém horním rohu<br>
-                2. Zadejte Username a Password z konfigurace addon-u<br>
-                3. Klikněte "Authorize" - nyní můžete testovat chráněné endpointy
+                <strong>Authentication in Swagger UI:</strong><br>
+                1. Click the "Authorize" button 🔒 in the top right corner<br>
+                2. Enter Username and Password from add-on configuration<br>
+                3. Click "Authorize" - now you can test protected endpoints
             </div>
         </div>
     </body>
@@ -172,7 +174,7 @@ def home():
 # Put Swagger UI on /docs/ path for direct access via port 5000
 api = Api(
     app, 
-    version='1.1.4',
+    version='1.1.5',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
     doc='/docs/',  # Swagger UI on /docs/ path
@@ -368,7 +370,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.1.4 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.1.5 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")

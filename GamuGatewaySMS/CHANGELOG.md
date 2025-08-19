@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2025-01-19
+
+### Added
+- **MQTT SMS Sending** - Send SMS messages via MQTT topic subscription
+- **Command Topic** - Subscribe to `homeassistant/sensor/sms_gateway/send` for SMS commands
+- **Status Feedback** - Publish SMS send status to `homeassistant/sensor/sms_gateway/send_status`
+- **JSON Command Format** - Simple JSON payload: `{"number": "+420123456789", "text": "Hello!"}`
+
+### Usage
+Send SMS via MQTT:
+```bash
+# Via MQTT Explorer or mosquitto_pub
+mosquitto_pub -h localhost -t "homeassistant/sensor/sms_gateway/send" -m '{"number": "+420123456789", "text": "Test from MQTT"}'
+
+# Via Home Assistant automation
+service: mqtt.publish
+data:
+  topic: "homeassistant/sensor/sms_gateway/send"
+  payload: '{"number": "+420123456789", "text": "Alert message"}'
+```
+
+### Changed
+- MQTT Publisher now handles both publishing sensors AND receiving SMS commands
+- Gammu machine properly shared between REST API and MQTT functionality
+
 ## [1.1.4] - 2025-01-19
 
 ### Added

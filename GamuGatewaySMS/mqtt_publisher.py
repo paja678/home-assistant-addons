@@ -18,9 +18,15 @@ class MQTTPublisher:
         self.client: Optional[mqtt.Client] = None
         self.connected = False
         self.topic_prefix = config.get('mqtt_topic_prefix', 'homeassistant/sensor/sms_gateway')
+        self.gammu_machine = None  # Will be set externally
         
         if config.get('mqtt_enabled', False):
             self._setup_client()
+    
+    def set_gammu_machine(self, machine):
+        """Set gammu machine for SMS sending"""
+        self.gammu_machine = machine
+        logger.info("Gammu machine set for MQTT SMS sending")
     
     def _setup_client(self):
         """Setup MQTT client with configuration"""
@@ -37,6 +43,7 @@ class MQTTPublisher:
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
             self.client.on_publish = self._on_publish
+            self.client.on_message = self._on_message
             
             # Connect to broker
             host = self.config.get('mqtt_host', 'core-mosquitto')
@@ -55,6 +62,10 @@ class MQTTPublisher:
             self.connected = True
             logger.info("Connected to MQTT broker")
             self._publish_discovery_configs()
+            # Subscribe to SMS send command topic
+            send_topic = f"{self.topic_prefix}/send"
+            client.subscribe(send_topic)
+            logger.info(f"Subscribed to SMS send topic: {send_topic}")
         else:
             logger.error(f"Failed to connect to MQTT broker: {rc}")
     
@@ -66,6 +77,97 @@ class MQTTPublisher:
     def _on_publish(self, client, userdata, mid):
         """Callback for published messages"""
         pass
+    
+    def _on_message(self, client, userdata, msg):
+        """Callback for received MQTT messages"""
+        try:
+            topic = msg.topic
+            payload = msg.payload.decode('utf-8')
+            logger.info(f"Received MQTT message on topic {topic}: {payload}")
+            
+            # Check if it's SMS send command
+            send_topic = f"{self.topic_prefix}/send"
+            if topic == send_topic:
+                self._handle_sms_send_command(payload)
+                
+        except Exception as e:
+            logger.error(f"Error processing MQTT message: {e}")
+    
+    def _handle_sms_send_command(self, payload):
+        """Handle SMS send command from MQTT"""
+        try:
+            # Parse JSON payload
+            data = json.loads(payload)
+            number = data.get('number')
+            text = data.get('text')
+            
+            if not number or not text:
+                logger.error("SMS send command missing required fields: number or text")
+                return
+            
+            logger.info(f"Processing SMS send command: {number} -> {text}")
+            
+            # Send SMS via gammu machine (will be set externally)
+            if hasattr(self, 'gammu_machine') and self.gammu_machine:
+                self._send_sms_via_gammu(number, text)
+            else:
+                logger.error("Gammu machine not available for SMS sending")
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in SMS send command: {e}")
+        except Exception as e:
+            logger.error(f"Error handling SMS send command: {e}")
+    
+    def _send_sms_via_gammu(self, number, text):
+        """Send SMS using gammu machine"""
+        try:
+            # Import gammu and support functions
+            from support import encodeSms
+            
+            # Prepare SMS info
+            smsinfo = {
+                "Class": -1,
+                "Unicode": False,
+                "Entries": [
+                    {
+                        "ID": "ConcatenatedTextLong",
+                        "Buffer": text,
+                    }
+                ],
+            }
+            
+            # Encode and send SMS
+            messages = encodeSms(smsinfo)
+            for message in messages:
+                message["SMSC"] = {'Location': 1}
+                message["Number"] = number
+                result = self.gammu_machine.SendSMS(message)
+                logger.info(f"SMS sent successfully: {result}")
+                
+            # Publish confirmation
+            if self.connected:
+                status_topic = f"{self.topic_prefix}/send_status"
+                status_data = {
+                    "status": "success",
+                    "number": number,
+                    "text": text,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self.client.publish(status_topic, json.dumps(status_data), retain=False)
+                
+        except Exception as e:
+            logger.error(f"Failed to send SMS via gammu: {e}")
+            # Publish error status
+            if self.connected:
+                status_topic = f"{self.topic_prefix}/send_status"
+                status_data = {
+                    "status": "error",
+                    "error": str(e),
+                    "number": number,
+                    "text": text,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                self.client.publish(status_topic, json.dumps(status_data), retain=False)
     
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""
