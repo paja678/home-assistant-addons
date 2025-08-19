@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2025-01-19
+
+### Changed
+- **Swagger UI on Root** - Moved Swagger UI directly to root path (/) for optimal Ingress compatibility
+- **Removed Custom HTML** - Eliminated custom welcome page that was causing conflicts
+- **Simplified Routing** - Clean, minimal setup with just Swagger UI and API endpoints
+
+### Fixed
+- **Final Ingress Solution** - Swagger UI now works perfectly through Home Assistant "Open Web UI" button
+
 ## [1.1.2] - 2025-01-19
 
 ### Added

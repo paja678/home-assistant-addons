@@ -77,7 +77,7 @@ ingress_path = os.environ.get('INGRESS_PATH', '')
 # Put Swagger UI directly on root path for Ingress compatibility
 api = Api(
     app, 
-    version='1.1.2',
+    version='1.1.3',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
     doc='/',  # Put Swagger UI on root path
@@ -273,7 +273,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.1.2 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.1.3 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")
