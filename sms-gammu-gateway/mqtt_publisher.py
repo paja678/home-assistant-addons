@@ -265,24 +265,21 @@ class MQTTPublisher:
             self._clear_text_fields()
     
     def _clear_text_fields(self):
-        """Clear both fields for clean state after sending"""
-        # Always clear internal state
-        self.current_phone_number = ""
+        """Clear only message field after sending, keep phone number for convenience"""
+        # Clear only message text, keep phone number
         self.current_message_text = ""
         
-        # Try to clear UI if connected
+        # Try to clear only message in UI if connected
         if self.connected and self.client:
             try:
-                phone_state_topic = f"{self.topic_prefix}/phone_number/state"
                 message_state_topic = f"{self.topic_prefix}/message_text/state"
-                # Use retain=True to ensure HA gets the clear state
-                self.client.publish(phone_state_topic, "", retain=True)
+                # Clear only message field with retain=True
                 self.client.publish(message_state_topic, "", retain=True)
-                logger.info("🧹 Cleared both text input fields (internal + UI with retain=True)")
+                logger.info("🧹 Cleared message text field (keeping phone number for convenience)")
             except Exception as e:
-                logger.warning(f"Could not clear UI fields, but internal state cleared: {e}")
+                logger.warning(f"Could not clear message field in UI: {e}")
         else:
-            logger.info("🧹 Cleared both text input fields (internal state only)")
+            logger.info("🧹 Cleared message text field (internal state only)")
     
     def _publish_phone_state(self, value):
         """Publish phone number state"""
@@ -297,20 +294,17 @@ class MQTTPublisher:
             self.client.publish(state_topic, value, retain=False)
     
     def _publish_empty_text_fields(self):
-        """Force text fields to empty state on startup with retain"""
+        """Initialize message field to empty on startup, let phone number persist"""
         if self.connected:
-            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
             message_state_topic = f"{self.topic_prefix}/message_text/state"
             
-            # Force empty state with retain=True to override any cached values
-            self.client.publish(phone_state_topic, "", retain=True)
+            # Force only message to empty state with retain=True
             self.client.publish(message_state_topic, "", retain=True)
             
-            # Also ensure internal state is empty
-            self.current_phone_number = ""
+            # Clear only message internally, phone number will sync from HA
             self.current_message_text = ""
             
-            logger.info("🔄 Forced text fields to empty state with retain=True (UI sync)")
+            logger.info("🔄 Initialized message field to empty (phone number persists from last session)")
     
     def _publish_discovery_configs(self):
         """Publish Home Assistant auto-discovery configurations"""

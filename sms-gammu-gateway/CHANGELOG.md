@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.6] - 2025-01-19
+
+### Changed
+- **Smart Field Clearing** - Only message text clears after sending, phone number persists for convenience
+- **Better UX** - Phone number stays for sending multiple messages to same recipient
+- **Startup Behavior** - Phone number persists from last session, only message field clears
+
+### Why this change?
+- Users often send multiple messages to the same number
+- Reduces typing when sending multiple alerts to same contact
+- Follows common messaging app behavior
+
 ## [1.2.5] - 2025-01-19
 
 ### Fixed

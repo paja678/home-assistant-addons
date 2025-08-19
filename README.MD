@@ -27,7 +27,7 @@ This repository contains the following add-ons
 
 This addon receives AVL data from Teltonika GPS devices over TCP and logs it with timestamps for further processing or diagnostics.
 
-### [SMS Gammu Gateway](./GamuGatewaySMS)
+### [SMS Gammu Gateway](./sms-gammu-gateway)
 
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
