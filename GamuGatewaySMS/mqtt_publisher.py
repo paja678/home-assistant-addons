@@ -170,7 +170,21 @@ class MQTTPublisher:
             # Encode and send SMS
             messages = encodeSms(smsinfo)
             for message in messages:
-                message["SMSC"] = {'Location': 1}
+                # Try configured SMSC, then SIM, then fallback
+                config_smsc = self.config.get('smsc_number', '').strip()
+                if config_smsc:
+                    message["SMSC"] = {'Number': config_smsc}
+                    logger.info(f"Using configured SMSC: {config_smsc}")
+                else:
+                    try:
+                        smsc = self.gammu_machine.GetSMSC(Location=1)
+                        message["SMSC"] = {'Number': smsc['Number']}
+                        logger.info(f"Using SMSC from SIM: {smsc['Number']}")
+                    except:
+                        # Fallback to automatic SMSC
+                        message["SMSC"] = {'Location': 1}
+                        logger.warning("Could not get SMSC from SIM, using location 1")
+                
                 message["Number"] = number
                 result = self.gammu_machine.SendSMS(message)
                 logger.info(f"SMS sent successfully: {result}")
@@ -193,6 +207,8 @@ class MQTTPublisher:
                 user_error = "SMS sending failed - check SIM card, network signal or device connection"
             elif "Code': 38" in error_msg:
                 user_error = "Network registration failed - check SIM card and signal"
+            elif "Code': 69" in error_msg:
+                user_error = "SMSC number not found - configure SMS center number in SIM settings"
             else:
                 user_error = f"SMS sending error: {error_msg}"
             
@@ -234,14 +250,17 @@ class MQTTPublisher:
             logger.error("Gammu machine not available for SMS sending")
     
     def _clear_text_fields(self):
-        """Clear only message text field, keep phone number for convenience"""
-        # Keep phone number, clear only message
+        """Clear both fields for clean state after sending"""
+        # Clear both fields for consistency
+        self.current_phone_number = ""
         self.current_message_text = ""
         if self.connected:
-            # Clear only message text in UI
+            # Clear both fields in UI
+            phone_state_topic = f"{self.topic_prefix}/phone_number/state"
             message_state_topic = f"{self.topic_prefix}/message_text/state"
+            self.client.publish(phone_state_topic, "", retain=False)
             self.client.publish(message_state_topic, "", retain=False)
-            logger.info("Cleared message text field (kept phone number)")
+            logger.info("Cleared both text input fields")
     
     def _publish_phone_state(self, value):
         """Publish phone number state"""

@@ -41,3 +41,6 @@ configuration:
   sms_check_interval:
     name: Interval Kontroly SMS
     description: Jak často kontrolovat nové SMS zprávy (sekundy, 30-300)
+  smsc_number:
+    name: SMSC Číslo
+    description: Číslo SMS centra operátora (např. +420603052000 pro T-Mobile). Nechte prázdné pro automatickou detekci.

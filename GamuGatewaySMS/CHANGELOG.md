@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2025-01-19
+
+### Added
+- **SMSC Configuration** - New optional "SMSC Number" field in addon configuration
+- **Smart SMSC Priority** - Uses configured SMSC → SIM SMSC → fallback (in that order)
+- **Multi-language Support** - Added SMSC field to both Czech and English translations
+
+### How to fix Code 69 error:
+1. Go to addon Configuration
+2. Add your operator's SMSC number in "SMSC Number" field:
+   - T-Mobile CZ: `+420603052000`
+   - Vodafone CZ: `+420724000000`
+   - O2 CZ: `+420602909090`
+3. Restart addon
+4. Try sending SMS again
+
+### Technical Details:
+- Added `smsc_number` to config schema and options
+- Enhanced SMSC resolution logic in MQTT publisher
+- Improved logging for SMSC source identification
+
+## [1.2.0] - 2025-01-19
+
+### Fixed
+- **Field Synchronization** - Both phone number and message now clear after sending to prevent confusion
+- **SMSC Auto-Detection** - Automatic SMS center number detection with fallback
+- **Gammu Error Code 69** - Better handling of SMSC number issues
+- **State Consistency** - UI and internal state now always match
+
+### Changed
+- **Breaking Change**: Both text fields now clear after SMS send (was keeping phone number)
+- **Smart SMSC Handling**: Tries to get SMSC from SIM, falls back to location 1 if failed
+- **Better Error Messages**: Added specific error for SMSC configuration issues
+
+### Technical Improvements:
+- Added `GetSMSC()` call before sending to resolve Code 69 errors
+- Enhanced error handling for SMSC-related failures
+- Improved field clearing logic for consistency
+
 ## [1.1.9] - 2025-01-19
 
 ### Fixed

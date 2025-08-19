@@ -41,3 +41,6 @@ configuration:
   sms_check_interval:
     name: SMS Check Interval
     description: How often to check for new SMS messages (seconds, 30-300)
+  smsc_number:
+    name: SMSC Number
+    description: SMS Center number of your operator (e.g., +420603052000 for T-Mobile). Leave empty for automatic detection.
