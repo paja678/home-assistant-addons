@@ -54,5 +54,4 @@
   "ports_description": {
     "5000/tcp": "SMS Gateway API port"
   },
-  "services": ["mqtt:homeassistant/sensor/sms_gateway/send:send_sms"]
 }
