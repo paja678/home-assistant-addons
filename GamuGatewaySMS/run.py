@@ -67,13 +67,13 @@ mqtt_publisher = MQTTPublisher(config)
 
 app = Flask(__name__)
 
-# Swagger UI Configuration
+# Swagger UI Configuration  
 api = Api(
     app, 
-    version='1.0.4',
+    version='1.0.9',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.)',
-    doc='/docs/',
+    doc='/',  # Change to root for Ingress compatibility
     authorizations={
         'basicAuth': {
             'type': 'basic',
@@ -135,12 +135,8 @@ reset_response = api.model('Reset Response', {
 ns_sms = api.namespace('sms', description='SMS operations (requires authentication)')
 ns_status = api.namespace('status', description='Device status and information (public)')
 
-# Add root route for Ingress compatibility  
-@app.route('/')
-def index():
-    """Redirect root to Swagger documentation"""
-    from flask import redirect
-    return redirect('/docs/')
+# Root is now handled by Swagger API (doc='/') 
+# No need for separate redirect
 
 @ns_sms.route('')
 @ns_sms.doc('sms_operations')
@@ -272,7 +268,7 @@ class Reset(Resource):
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.0.8 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.0.9 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"📋 Swagger UI: http://localhost:{port}/docs/")
@@ -289,6 +285,9 @@ if __name__ == '__main__':
         
         # Start periodic MQTT publishing
         mqtt_publisher.publish_status_periodic(machine, interval=300)  # 5 minutes
+        
+        # Start SMS monitoring
+        mqtt_publisher.start_sms_monitoring(machine, check_interval=60)  # Check every minute
     else:
         print(f"📡 MQTT: Disabled")
     

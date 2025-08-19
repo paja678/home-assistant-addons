@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.9] - 2025-01-19
+
+### Added
+- **Automatic SMS Detection** - Background monitoring for incoming SMS messages
+- **Real-time SMS Notifications** - New SMS automatically published to MQTT (every 60s check)
+- **SMS Monitoring Thread** - Independent background process for SMS detection
+
+### Fixed
+- **Ingress Web UI** - Fixed "Open Web UI" button in Home Assistant by moving Swagger to root path
+- **Web Interface Access** - Swagger UI now properly accessible via HA Ingress
+
+### Changed
+- Swagger UI moved from `/docs/` to `/` for better Ingress compatibility
+- SMS monitoring runs every 60 seconds when MQTT is enabled
+- Improved SMS detection with proper error handling
+
+## [1.0.8] - 2025-01-19
+
+### Added
+- **Initial MQTT State Publishing** - Publish sensor states immediately on startup
+- **Retained MQTT Messages** - Values persist across Home Assistant restarts
+- **Enhanced MQTT Logging** - Detailed logs when values are published to MQTT
+- **Better Web UI Routing** - Improved Flask route handling for Swagger UI
+
+### Fixed
+- **MQTT Discovery** - Sensors now appear in HA immediately after add-on startup
+- **Web UI Access** - Better routing for Ingress and direct access
+
+### Changed
+- MQTT messages now use `retain=True` for persistence
+- Improved startup sequence with 2-second MQTT connection wait
+- Enhanced logging format for better debugging
+
 ## [1.0.7] - 2025-01-19
 
 ### Added

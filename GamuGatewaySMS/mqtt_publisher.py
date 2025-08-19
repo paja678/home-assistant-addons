@@ -199,6 +199,50 @@ class MQTTPublisher:
         except Exception as e:
             logger.error(f"Error publishing initial states: {e}")
     
+    def start_sms_monitoring(self, gammu_machine, check_interval=30):
+        """Start SMS monitoring in background thread"""
+        if not self.connected:
+            return
+            
+        def _sms_monitor_loop():
+            logger.info(f"📱 Started SMS monitoring (check every {check_interval}s)")
+            last_sms_count = 0
+            
+            while self.connected:
+                try:
+                    from support import retrieveAllSms, deleteSms
+                    
+                    # Check for new SMS
+                    all_sms = retrieveAllSms(gammu_machine)
+                    current_count = len(all_sms)
+                    
+                    # If there are new SMS since last check
+                    if current_count > last_sms_count:
+                        logger.info(f"📱 Detected {current_count - last_sms_count} new SMS messages")
+                        
+                        # Process new SMS (from the end, newest first)
+                        for i in range(last_sms_count, current_count):
+                            if i < len(all_sms):
+                                sms = all_sms[i].copy()
+                                sms.pop("Locations", None)
+                                
+                                # Publish to MQTT
+                                self.publish_sms_received(sms)
+                                
+                                # Optionally delete after processing
+                                # deleteSms(gammu_machine, all_sms[i])
+                    
+                    last_sms_count = current_count
+                    
+                except Exception as e:
+                    logger.error(f"Error monitoring SMS: {e}")
+                
+                time.sleep(check_interval)
+        
+        if self.config.get('mqtt_enabled', False):
+            thread = threading.Thread(target=_sms_monitor_loop, daemon=True)
+            thread.start()
+    
     def publish_status_periodic(self, gammu_machine, interval=60):
         """Publish status data periodically in background thread"""
         if not self.connected:
