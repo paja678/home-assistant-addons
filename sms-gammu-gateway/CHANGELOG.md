@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.9] - 2025-01-19
+
+### Fixed
+- **Signal Strength Sensor** - Removed invalid `device_class: "signal_strength"` to make sensor appear in Home Assistant
+- **MQTT Discovery** - Signal strength sensor now properly discovered and displayed in HA
+
+### Technical Details
+- Signal strength sensor uses percentage (%) instead of dBm, so device_class was incompatible
+- Removed device_class allows HA to treat it as generic sensor with % unit
+
 ## [1.2.8] - 2025-01-19
 
 ### Changed

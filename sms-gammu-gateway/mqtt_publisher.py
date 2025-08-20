@@ -318,7 +318,6 @@ class MQTTPublisher:
             "state_topic": f"{self.topic_prefix}/signal/state",
             "value_template": "{{ value_json.SignalPercent }}",
             "unit_of_measurement": "%",
-            "device_class": "signal_strength",
             "icon": "mdi:signal-cellular-3",
             "device": {
                 "identifiers": ["sms_gateway"],
