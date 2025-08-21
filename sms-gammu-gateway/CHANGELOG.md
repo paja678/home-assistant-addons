@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2025-01-21
+
+### Fixed
+- **MQTT Unicode Support** - Fixed MQTT SMS sending to properly handle Unicode messages
+- MQTT method now respects `"unicode": true` parameter in JSON payload (was previously ignored)
+- Unicode messages sent via MQTT now display correctly instead of showing ????
+
+### Technical Details
+- Updated `mqtt_publisher.py` to extract and use unicode parameter from MQTT JSON payload
+- Modified `_send_sms_via_gammu()` method to accept unicode_mode parameter
+- Fixed hard-coded `"Unicode": False` that prevented Unicode encoding in MQTT messages
+- MQTT Unicode handling now matches REST API and Native HA Service behavior
+
 ## [1.2.9] - 2025-01-19
 
 ### Fixed

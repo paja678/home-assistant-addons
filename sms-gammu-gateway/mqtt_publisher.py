@@ -146,16 +146,17 @@ class MQTTPublisher:
             data = json.loads(payload)
             number = data.get('number')
             text = data.get('text')
+            unicode_mode = data.get('unicode', False)  # Extract unicode parameter
             
             if not number or not text:
                 logger.error("SMS send command missing required fields: number or text")
                 return
             
-            logger.info(f"Processing SMS send command: {number} -> {text}")
+            logger.info(f"Processing SMS send command: {number} -> {text} (unicode: {unicode_mode})")
             
             # Send SMS via gammu machine (will be set externally)
             if hasattr(self, 'gammu_machine') and self.gammu_machine:
-                self._send_sms_via_gammu(number, text)
+                self._send_sms_via_gammu(number, text, unicode_mode)
             else:
                 logger.error("Gammu machine not available for SMS sending")
                 
@@ -164,7 +165,7 @@ class MQTTPublisher:
         except Exception as e:
             logger.error(f"Error handling SMS send command: {e}")
     
-    def _send_sms_via_gammu(self, number, text):
+    def _send_sms_via_gammu(self, number, text, unicode_mode=False):
         """Send SMS using gammu machine"""
         try:
             # Import gammu and support functions
@@ -173,7 +174,7 @@ class MQTTPublisher:
             # Prepare SMS info
             smsinfo = {
                 "Class": -1,
-                "Unicode": False,
+                "Unicode": unicode_mode,
                 "Entries": [
                     {
                         "ID": "ConcatenatedTextLong",
@@ -256,7 +257,9 @@ class MQTTPublisher:
         # Send SMS using current values
         logger.info(f"Button SMS send: {self.current_phone_number} -> {self.current_message_text}")
         if hasattr(self, 'gammu_machine') and self.gammu_machine:
-            self._send_sms_via_gammu(self.current_phone_number, self.current_message_text)
+            # Use unicode=False as default for button sends (same as original behavior)
+            # Could be enhanced later to support unicode selection in UI
+            self._send_sms_via_gammu(self.current_phone_number, self.current_message_text, unicode_mode=False)
             # Always clear fields after send attempt (success or failure)
             self._clear_text_fields()
         else:
