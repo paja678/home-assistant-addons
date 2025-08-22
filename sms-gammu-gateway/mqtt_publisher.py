@@ -12,6 +12,63 @@ import paho.mqtt.client as mqtt
 
 logger = logging.getLogger(__name__)
 
+class DeviceConnectivityTracker:
+    """Tracks USB GSM device connectivity status based on gammu communication"""
+    
+    def __init__(self, offline_timeout_seconds=600):  # 10 minutes default
+        self.last_success_time = None
+        self.consecutive_failures = 0
+        self.last_error = None
+        self.offline_timeout = offline_timeout_seconds
+        self.total_operations = 0
+        self.successful_operations = 0
+        
+    def record_success(self):
+        """Record successful gammu operation"""
+        self.last_success_time = time.time()
+        self.consecutive_failures = 0
+        self.last_error = None
+        self.total_operations += 1
+        self.successful_operations += 1
+        
+    def record_failure(self, error_message=None):
+        """Record failed gammu operation"""
+        self.consecutive_failures += 1
+        self.last_error = str(error_message) if error_message else "Communication failed"
+        self.total_operations += 1
+        
+    def get_status(self):
+        """Get current device connectivity status"""
+        if self.last_success_time is None:
+            return "unknown"
+            
+        time_since_last_success = time.time() - self.last_success_time
+        if time_since_last_success > self.offline_timeout:
+            return "offline"
+        else:
+            return "online"
+            
+    def get_status_data(self):
+        """Get detailed status information"""
+        status = self.get_status()
+        
+        data = {
+            "status": status,
+            "consecutive_failures": self.consecutive_failures,
+            "total_operations": self.total_operations,
+            "successful_operations": self.successful_operations,
+            "last_error": self.last_error
+        }
+        
+        if self.last_success_time:
+            data["last_seen"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.last_success_time))
+            data["seconds_since_last_success"] = int(time.time() - self.last_success_time)
+        else:
+            data["last_seen"] = None
+            data["seconds_since_last_success"] = None
+            
+        return data
+
 class MQTTPublisher:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -21,6 +78,7 @@ class MQTTPublisher:
         self.gammu_machine = None  # Will be set externally
         self.current_phone_number = ""  # Current phone number from text input
         self.current_message_text = ""  # Current message text from text input
+        self.device_tracker = DeviceConnectivityTracker()  # USB device connectivity tracking
         
         if config.get('mqtt_enabled', False):
             self._setup_client()
@@ -197,7 +255,7 @@ class MQTTPublisher:
                     logger.info("Using SMSC from Location 1 (same as REST API)")
                 
                 message["Number"] = number
-                result = self.gammu_machine.SendSMS(message)
+                result = self.track_gammu_operation("SendSMS", self.gammu_machine.SendSMS, message)
                 logger.info(f"SMS sent successfully: {result}")
                 
             # Publish confirmation
@@ -426,12 +484,29 @@ class MQTTPublisher:
             }
         }
         
+        # Modem Status sensor
+        device_status_config = {
+            "name": "Modem Status",
+            "unique_id": "sms_gateway_modem_status",
+            "state_topic": f"{self.topic_prefix}/device_status/state",
+            "value_template": "{{ value_json.status }}",
+            "json_attributes_topic": f"{self.topic_prefix}/device_status/state",
+            "icon": "mdi:connection",
+            "device": {
+                "identifiers": ["sms_gateway"],
+                "name": "SMS Gateway",
+                "model": "GSM Modem",
+                "manufacturer": "Gammu Gateway"
+            }
+        }
+        
         # Publish discovery configs
         discoveries = [
             ("homeassistant/sensor/sms_gateway_signal/config", signal_config),
             ("homeassistant/sensor/sms_gateway_network/config", network_config),
             ("homeassistant/sensor/sms_gateway_last_sms/config", sms_config),
             ("homeassistant/sensor/sms_gateway_send_status/config", send_status_config),
+            ("homeassistant/sensor/sms_gateway_modem_status/config", device_status_config),
             ("homeassistant/button/sms_gateway_send_button/config", button_config),
             ("homeassistant/text/sms_gateway_phone_number/config", phone_text_config),
             ("homeassistant/text/sms_gateway_message_text/config", message_text_config)
@@ -484,6 +559,42 @@ class MQTTPublisher:
         
         logger.info(f"📡 Published SMS to MQTT: {sms_data.get('Number', 'Unknown')} -> {sms_data.get('Text', '')}")
     
+    def publish_device_status(self):
+        """Publish USB device connectivity status"""
+        if not self.connected:
+            return
+            
+        status_data = self.device_tracker.get_status_data()
+        
+        topic = f"{self.topic_prefix}/device_status/state"
+        self.client.publish(topic, json.dumps(status_data), retain=True)
+        
+        # Log status changes
+        status = status_data.get('status')
+        if hasattr(self, '_last_device_status') and self._last_device_status != status:
+            if status == 'online':
+                logger.info(f"📶 Modem: ONLINE (after {status_data.get('consecutive_failures', 0)} failures)")
+            elif status == 'offline':
+                logger.warning(f"❌ Modem: OFFLINE (no response for {status_data.get('seconds_since_last_success', 0)}s)")
+            elif status == 'unknown':
+                logger.info("❓ Modem: UNKNOWN (no communication attempts yet)")
+        
+        self._last_device_status = status
+        
+    def track_gammu_operation(self, operation_name, gammu_function, *args, **kwargs):
+        """Execute gammu operation with connectivity tracking"""
+        try:
+            result = gammu_function(*args, **kwargs)
+            self.device_tracker.record_success()
+            self.publish_device_status()
+            logger.debug(f"✅ Gammu operation '{operation_name}' succeeded")
+            return result
+        except Exception as e:
+            self.device_tracker.record_failure(f"{operation_name}: {str(e)}")
+            self.publish_device_status()
+            logger.warning(f"❌ Gammu operation '{operation_name}' failed: {e}")
+            raise
+    
     def _publish_initial_states(self):
         """Publish initial sensor states on startup"""
         # This will be called from the main thread with access to gammu machine
@@ -498,12 +609,12 @@ class MQTTPublisher:
         try:
             from gammu import GSMNetworks
             
-            # Publish initial signal strength
-            signal = gammu_machine.GetSignalQuality()
+            # Publish initial signal strength with connectivity tracking
+            signal = self.track_gammu_operation("GetSignalQuality", gammu_machine.GetSignalQuality)
             self.publish_signal_strength(signal)
             
-            # Publish initial network info
-            network = gammu_machine.GetNetworkInfo()
+            # Publish initial network info with connectivity tracking
+            network = self.track_gammu_operation("GetNetworkInfo", gammu_machine.GetNetworkInfo)
             network["NetworkName"] = GSMNetworks.get(network.get("NetworkCode", ""), 'Unknown')
             self.publish_network_info(network)
             
@@ -530,8 +641,8 @@ class MQTTPublisher:
                 try:
                     from support import retrieveAllSms, deleteSms
                     
-                    # Check for new SMS
-                    all_sms = retrieveAllSms(gammu_machine)
+                    # Check for new SMS with connectivity tracking
+                    all_sms = self.track_gammu_operation("retrieveAllSms", retrieveAllSms, gammu_machine)
                     current_count = len(all_sms)
                     
                     # If there are new SMS since last check
@@ -571,13 +682,13 @@ class MQTTPublisher:
         def _publish_loop():
             while self.connected:
                 try:
-                    # Publish signal strength
-                    signal = gammu_machine.GetSignalQuality()
+                    # Publish signal strength with connectivity tracking
+                    signal = self.track_gammu_operation("GetSignalQuality", gammu_machine.GetSignalQuality)
                     self.publish_signal_strength(signal)
                     
-                    # Publish network info
+                    # Publish network info with connectivity tracking
                     from gammu import GSMNetworks
-                    network = gammu_machine.GetNetworkInfo()
+                    network = self.track_gammu_operation("GetNetworkInfo", gammu_machine.GetNetworkInfo)
                     network["NetworkName"] = GSMNetworks.get(network.get("NetworkCode", ""), 'Unknown')
                     self.publish_network_info(network)
                     

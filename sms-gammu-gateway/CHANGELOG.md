@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2025-01-21
+
+### Changed
+- **Sensor Naming Improvement** - Renamed "USB Device Status" to "Modem Status" for better clarity
+- Updated sensor icon from `mdi:usb` to `mdi:connection` for more appropriate representation
+- Improved logging messages with better emoji indicators (📶 ONLINE, ❌ OFFLINE)
+- Updated unique_id from `sms_gateway_device_status` to `sms_gateway_modem_status`
+
+## [1.3.1] - 2025-01-21
+
+### Added
+- **USB Device Status Sensor** - New MQTT sensor monitoring GSM device connectivity
+- Real-time tracking of device communication success/failure
+- Detailed device status with attributes: last_seen, consecutive_failures, last_error
+- Smart offline detection (10 minutes without successful communication)
+- Status logging with emoji indicators (📱 ONLINE, 🚫 OFFLINE, ❓ UNKNOWN)
+
+### Enhanced
+- **Comprehensive Gammu Operation Tracking** - All gammu communications now monitored
+- REST API endpoints, periodic status checks, SMS operations tracked
+- Automatic device status updates on every communication attempt
+- Home Assistant auto-discovery includes new USB Device Status sensor
+
+### Technical Details
+- Added `DeviceConnectivityTracker` class for communication monitoring
+- Wrapped all gammu operations with connectivity tracking
+- Device status published to MQTT topic: `{topic_prefix}/device_status/state`
+- Status states: "online", "offline", "unknown" with detailed attributes
+
 ## [1.3.0] - 2025-01-21
 
 ### Fixed

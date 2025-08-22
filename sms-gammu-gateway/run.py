@@ -144,7 +144,7 @@ def home():
             
             <div class="status">
                 <strong>✅ Gateway is running properly</strong><br>
-                Version: 1.3.0
+                Version: 1.3.2
             </div>
             
             <a href="http://''' + request.host.split(':')[0] + ''':5000/docs/" 
@@ -174,7 +174,7 @@ def home():
 # Put Swagger UI on /docs/ path for direct access via port 5000
 api = Api(
     app, 
-    version='1.3.0',
+    version='1.3.2',
     title='SMS Gammu Gateway API',
     description='REST API for sending and receiving SMS messages via USB GSM modems (SIM800L, Huawei, etc.). Modern replacement for deprecated SMS notifications via GSM-modem integration.',
     doc='/docs/',  # Swagger UI on /docs/ path
@@ -249,7 +249,7 @@ class SmsCollection(Resource):
     @auth.login_required
     def get(self):
         """Get all SMS messages from SIM/device memory"""
-        allSms = retrieveAllSms(machine)
+        allSms = mqtt_publisher.track_gammu_operation("retrieveAllSms", retrieveAllSms, machine)
         list(map(lambda sms: sms.pop("Locations", None), allSms))
         return allSms
 
@@ -296,7 +296,7 @@ class SmsCollection(Resource):
                 message["SMSC"] = {'Number': args.get("smsc")} if args.get("smsc") else {'Location': 1}
                 message["Number"] = number.strip()
                 messages.append(message)
-        result = [machine.SendSMS(message) for message in messages]
+        result = [mqtt_publisher.track_gammu_operation("SendSMS", machine.SendSMS, message) for message in messages]
         return {"status": 200, "message": str(result)}, 200
 
 @ns_sms.route('/<int:id>')
@@ -308,7 +308,7 @@ class SmsItem(Resource):
     @auth.login_required
     def get(self, id):
         """Get specific SMS by ID"""
-        allSms = retrieveAllSms(machine)
+        allSms = mqtt_publisher.track_gammu_operation("retrieveAllSms", retrieveAllSms, machine)
         if id < 0 or id >= len(allSms):
             api.abort(404, f"SMS with id '{id}' not found")
         sms = allSms[id]
@@ -320,10 +320,10 @@ class SmsItem(Resource):
     @auth.login_required
     def delete(self, id):
         """Delete SMS by ID"""
-        allSms = retrieveAllSms(machine)
+        allSms = mqtt_publisher.track_gammu_operation("retrieveAllSms", retrieveAllSms, machine)
         if id < 0 or id >= len(allSms):
             api.abort(404, f"SMS with id '{id}' not found")
-        deleteSms(machine, allSms[id])
+        mqtt_publisher.track_gammu_operation("deleteSms", deleteSms, machine, allSms[id])
         return '', 204
 
 @ns_sms.route('/getsms')
@@ -335,11 +335,11 @@ class GetSms(Resource):
     @auth.login_required
     def get(self):
         """Get first SMS and delete it from memory"""
-        allSms = retrieveAllSms(machine)
+        allSms = mqtt_publisher.track_gammu_operation("retrieveAllSms", retrieveAllSms, machine)
         sms = {"Date": "", "Number": "", "State": "", "Text": ""}
         if len(allSms) > 0:
             sms = allSms[0]
-            deleteSms(machine, sms)
+            mqtt_publisher.track_gammu_operation("deleteSms", deleteSms, machine, sms)
             sms.pop("Locations", None)
             # Publish to MQTT if enabled and SMS has content
             if sms.get("Text"):
@@ -353,7 +353,7 @@ class Signal(Resource):
     @ns_status.marshal_with(signal_response)
     def get(self):
         """Get GSM signal strength and quality"""
-        signal_data = machine.GetSignalQuality()
+        signal_data = mqtt_publisher.track_gammu_operation("GetSignalQuality", machine.GetSignalQuality)
         # Publish to MQTT if enabled
         mqtt_publisher.publish_signal_strength(signal_data)
         return signal_data
@@ -365,7 +365,7 @@ class Network(Resource):
     @ns_status.marshal_with(network_response)
     def get(self):
         """Get network operator and registration information"""
-        network = machine.GetNetworkInfo()
+        network = mqtt_publisher.track_gammu_operation("GetNetworkInfo", machine.GetNetworkInfo)
         network["NetworkName"] = GSMNetworks.get(network.get("NetworkCode", ""), 'Unknown')
         # Publish to MQTT if enabled
         mqtt_publisher.publish_network_info(network)
@@ -378,11 +378,11 @@ class Reset(Resource):
     @ns_status.marshal_with(reset_response)
     def get(self):
         """Reset GSM modem (useful for stuck connections)"""
-        machine.Reset(False)
+        mqtt_publisher.track_gammu_operation("Reset", machine.Reset, False)
         return {"status": 200, "message": "Reset done"}, 200
 
 if __name__ == '__main__':
-    print(f"🚀 SMS Gammu Gateway v1.3.0 started successfully!")
+    print(f"🚀 SMS Gammu Gateway v1.3.2 started successfully!")
     print(f"📱 Device: {device_path}")
     print(f"🌐 API available on port {port}")
     print(f"🏠 Web UI: http://localhost:{port}/")
