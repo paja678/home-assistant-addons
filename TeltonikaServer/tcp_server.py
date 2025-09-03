@@ -19,6 +19,15 @@ imei_registry = None
 
 def ensure_data_dir():
     """Vytvoří data složku pokud neexistuje"""
+    print(f"DEBUG: ensure_data_dir() called")
+    print(f"DEBUG: DATA_DIR = {DATA_DIR}")
+    print(f"DEBUG: CONFIG_DIR = {CONFIG_DIR}")
+    print(f"DEBUG: log_to_config = {log_to_config}")
+    print(f"DEBUG: HA_ADDON env = {os.environ.get('HA_ADDON')}")
+    print(f"DEBUG: /share exists = {os.path.exists('/share')}")
+    print(f"DEBUG: /data exists = {os.path.exists('/data')}")
+    print(f"DEBUG: /config exists = {os.path.exists('/config')}")
+    
     print(f"Creating data directory: {DATA_DIR}")
     try:
         os.makedirs(DATA_DIR, exist_ok=True)

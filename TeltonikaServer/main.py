@@ -31,12 +31,16 @@ def main():
     
     # Načti konfiguraci z HA add-onu
     ha_config = load_ha_config()
+    print(f"DEBUG: Loaded HA config: {ha_config}")
     
     # Použij porty z konfigurace pokud jsou dostupné
     tcp_port = ha_config.get('tcp_port', args.tcp_port)
     web_port = ha_config.get('web_port', args.web_port)
     allowed_imeis = ha_config.get('allowed_imeis', [])
     log_to_config = ha_config.get('log_to_config', False)
+    
+    print(f"DEBUG: log_to_config = {log_to_config}")
+    print(f"DEBUG: allowed_imeis = {allowed_imeis}")
     
     # Pokud je seznam prázdný, žádné filtrování
     if not allowed_imeis:
@@ -45,19 +49,27 @@ def main():
     # Nastavíme globální proměnnou před voláním ensure_data_dir
     from tcp_server import log_to_config as current_log_to_config
     import tcp_server
+    print(f"DEBUG: Setting tcp_server.log_to_config to {log_to_config}")
     tcp_server.log_to_config = log_to_config
+    print(f"DEBUG: tcp_server.log_to_config is now {tcp_server.log_to_config}")
     
     # Vytvoř složky
+    print("DEBUG: Calling ensure_data_dir()...")
     ensure_data_dir()
+    print("DEBUG: ensure_data_dir() completed")
     
     # Spusť TCP server v samostatném threadu
     tcp_thread = threading.Thread(target=start_tcp_server, args=('0.0.0.0', tcp_port, allowed_imeis, log_to_config))
     tcp_thread.daemon = True
     tcp_thread.start()
     
+    print("✅ TCP server started successfully")
+    
     # Spusť web server v hlavním threadu
+    print("✅ Starting web server...")
     try:
         start_web_server(host='0.0.0.0', port=web_port)
+        print("✅ All servers started successfully and running!")
     except KeyboardInterrupt:
         print("Shutting down all servers...")
 
