@@ -9,7 +9,8 @@ from imei_registry import IMEIRegistry
 
 # Pro vývoj použij lokální složku, pro produkci /data
 DATA_DIR = '/data' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './data'
-CONFIG_DIR = '/share' if os.path.exists('/share') or os.environ.get('HA_ADDON') else './config'
+# V HA addon prostředí použij /share i když neexistuje (bude namountováno)
+CONFIG_DIR = '/share' if os.path.exists('/data') else './config'
 LOG_FILE = os.path.join(DATA_DIR, 'tcp_data.log')
 
 # Globální proměnné pro log rotaci a IMEI registry
