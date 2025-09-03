@@ -22,9 +22,8 @@ def ensure_data_dir():
     """Vytvoří data složku pokud neexistuje"""
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
-        print(f"✅ Data directory ready: {DATA_DIR}")
     except Exception as e:
-        print(f"❌ Failed to create {DATA_DIR}: {e}")
+        print(f"❌ Failed to create data directory: {e}")
     
     if log_to_config:
         config_log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
@@ -187,7 +186,7 @@ def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_loggi
     server.bind((host, port))
     server.listen(5)
     
-    log_location = "/config/teltonika_logs/" if log_to_config else "/data/"
+    log_location = "/share/teltonika_logs/" if log_to_config else "/data/"
     if allowed_imeis:
         print(f"TCP server listening on {host}:{port} with IMEI filter: {allowed_imeis}")
         print(f"Logs saved to: {log_location}")

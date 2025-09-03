@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.1
+
+### 🚀 New Features
+- **Production Ready**: Cleaned up all debug logging for production deployment
+- **Improved Startup**: Streamlined startup messages with clear status indicators
+- **Enhanced Error Reporting**: Raw data logging for failed parsing attempts with IMEI identification
+
+### 🔧 Improvements  
+- **Clean Logs**: Removed verbose debug output while maintaining essential operational information
+- **Startup Feedback**: Clear confirmation messages for successful server initialization
+- **Performance**: Removed unnecessary test imports and debug overhead
+
+### 🐛 Bug Fixes
+- **AVL Parsing**: Fixed incorrect record count parsing (was reading wrong packet structure)
+- **Packet Structure**: Corrected Teltonika AVL packet format with proper preamble handling
+- **Protocol Compliance**: Improved adherence to official Teltonika AVL protocol specification
+
+### 🧹 Code Cleanup
+- **Debug Removal**: Eliminated development debug logs and test utilities
+- **Optimized Build**: Removed test files from Docker image for smaller size
+- **Cleaner Output**: Reduced log verbosity while maintaining error visibility
+
 ## 0.3.6
 
 ### 🐛 Bug Fixes

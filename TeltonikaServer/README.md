@@ -23,15 +23,15 @@ Professional GPS tracking server for Teltonika devices with proper AVL protocol 
 - **Fleet Management**: Perfect for managing multiple Teltonika devices
 
 ### 📊 **Advanced Logging & Monitoring**
-- **Persistent Logs**: Stored in `/config/teltonika_logs/` (survives add-on updates)
+- **Persistent Logs**: Stored in `/share/teltonika_logs/` (survives add-on updates)
 - **Log Rotation**: New log file for each add-on restart with timestamp
 - **Parsed Data**: Human-readable GPS coordinates, speed, I/O status
 - **Raw Data**: Hex dumps for debugging and protocol analysis
 
 ### 🌐 **Enhanced Web Interface**
-- **📄 Logs Tab**: Real-time log viewing (last 500 lines, 10s auto-refresh)
-- **📱 IMEI Registry Tab**: Device overview with connection statistics
+- **Real-time Log Viewing**: Last 500 lines with 10s auto-refresh
 - **Multi-Log Support**: Displays data from all log files
+- **Clean Interface**: Focused on essential log information
 - **Responsive Design**: Works on desktop and mobile devices
 
 ### ⚙️ **Professional Configuration**
@@ -85,7 +85,7 @@ Store logs permanently in Home Assistant config:
 1. Install the add-on from this repository
 2. Configure TCP port (match your Teltonika device settings)
 3. Set IMEI filtering if needed (recommended for security)
-4. Enable persistent logging to `/config/`
+4. Enable persistent logging to `/share/`
 5. Start the add-on
 
 ### Device Configuration
@@ -97,7 +97,7 @@ Configure your Teltonika devices to send data to:
 
 ### Monitoring
 - **Web Interface**: Access via Home Assistant Ingress
-- **IMEI Registry**: Monitor all devices in `/imei` tab
+- **IMEI Registry**: Available in `/share/teltonika_logs/imei_registry.json`
 - **Real-time Logs**: View parsed GPS data and device activity
 
 ## Data Access
@@ -105,12 +105,11 @@ Configure your Teltonika devices to send data to:
 ### Web Interface
 - **Main Dashboard**: Available through Home Assistant Ingress
 - **Direct Access**: `http://[HA-IP]:[web-port]/` (if Ingress disabled)
-- **Logs View**: `/logs` - Real-time log display
-- **IMEI Registry**: `/imei` - Device management and statistics
+- **Real-time Logs**: Automatic refresh every 10 seconds
 
 ### File Access
-- **Persistent Logs**: `/config/teltonika_logs/teltonika_YYYYMMDD_HHMMSS.log`
-- **IMEI Registry**: `/config/teltonika_logs/imei_registry.json`
+- **Persistent Logs**: `/share/teltonika_logs/teltonika_YYYYMMDD_HHMMSS.log`
+- **IMEI Registry**: `/share/teltonika_logs/imei_registry.json`
 - **Current Log**: `/data/tcp_data.log` (if persistent logging disabled)
 
 ### Log Format
@@ -134,7 +133,7 @@ Configure your Teltonika devices to send data to:
 
 ### Log Access Issues
 1. Enable `log_to_config: true` for persistent storage
-2. Use Home Assistant File Editor to access `/config/teltonika_logs/`
+2. Use Home Assistant File Editor to access `/share/teltonika_logs/`
 3. Check IMEI Registry for device connection history
 
 ## Support

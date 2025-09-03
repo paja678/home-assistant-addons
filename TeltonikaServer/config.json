@@ -1,6 +1,6 @@
 {
   "name": "Teltonika Server",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "slug": "teltonika_server",
   "description": "Professional GPS tracking server with proper Teltonika AVL protocol, IMEI security, device registry, and persistent logging with enhanced web interface",
   "startup": "services",
