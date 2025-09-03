@@ -61,7 +61,6 @@ def main():
     print("✅ Starting web server...", flush=True)
     try:
         start_web_server(host='0.0.0.0', port=web_port)
-        print("✅ All servers started successfully and running!", flush=True)
     except KeyboardInterrupt:
         print("Shutting down all servers...")
 

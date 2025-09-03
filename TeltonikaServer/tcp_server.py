@@ -29,11 +29,11 @@ def ensure_data_dir():
         config_log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
         try:
             os.makedirs(config_log_dir, exist_ok=True)
-            print(f"✅ Persistent logging enabled: {config_log_dir}")
+            print(f"✅ Persistent logging: {config_log_dir}")
         except Exception as e:
             print(f"❌ Failed to create persistent log directory: {e}")
     else:
-        print("✅ Standard logging enabled: /data/")
+        print("✅ Standard logging: /data/")
 
 def get_imei_registry():
     """Vrátí IMEI registry instanci"""
