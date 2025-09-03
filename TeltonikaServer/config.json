@@ -1,8 +1,8 @@
 {
   "name": "Teltonika Server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "slug": "teltonika_server",
-  "description": "Server for receiving data from Teltonika GPS devices using AVL protocol and logging to file with web interface",
+  "description": "Professional GPS tracking server with proper Teltonika AVL protocol, IMEI security, device registry, and persistent logging with enhanced web interface",
   "startup": "services",
   "arch": ["amd64", "i386", "aarch64", "armv7", "armhf"],
   "boot": "auto",
