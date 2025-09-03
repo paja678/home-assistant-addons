@@ -28,6 +28,8 @@ def get_imei_registry():
     global imei_registry
     if imei_registry is None:
         registry_dir = os.path.join(CONFIG_DIR, 'teltonika_logs') if log_to_config else DATA_DIR
+        # Zajistíme, že složka existuje
+        os.makedirs(registry_dir, exist_ok=True)
         registry_path = os.path.join(registry_dir, 'imei_registry.json')
         imei_registry = IMEIRegistry(registry_path)
     return imei_registry
@@ -39,9 +41,12 @@ def get_log_file():
     if log_to_config:
         # Ukládej do /config/teltonika_logs/ s datem a časem
         if not current_log_file:
+            log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
+            # Zajistíme, že složka existuje
+            os.makedirs(log_dir, exist_ok=True)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'teltonika_{timestamp}.log'
-            current_log_file = os.path.join(CONFIG_DIR, 'teltonika_logs', filename)
+            current_log_file = os.path.join(log_dir, filename)
         return current_log_file
     else:
         # Standardní log do /data/

@@ -42,7 +42,12 @@ def main():
     if not allowed_imeis:
         allowed_imeis = None
     
-    # Vytvoř /data složku pokud neexistuje
+    # Nastavíme globální proměnnou před voláním ensure_data_dir
+    from tcp_server import log_to_config as current_log_to_config
+    import tcp_server
+    tcp_server.log_to_config = log_to_config
+    
+    # Vytvoř složky
     ensure_data_dir()
     
     # Spusť TCP server v samostatném threadu

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.3
+
+### 🔧 Improvements
+- **Simplified Web Interface**: Removed navigation tabs, showing only logs (IMEI Registry accessible via file system)
+- **Cleaner UI**: Streamlined interface focused on log viewing
+- **Reduced Complexity**: Removed unnecessary URL routing and navigation elements
+
+## 0.3.2
+
+### 🔧 Improvements
+- **Startup Logs**: Cleaned up verbose debugging output in startup script
+- **Log Readability**: Reduced unnecessary debug information during add-on startup
+
 ## 0.3.1
 
 ### 🐛 Bug Fixes
