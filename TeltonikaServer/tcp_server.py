@@ -9,7 +9,7 @@ from imei_registry import IMEIRegistry
 
 # Pro vývoj použij lokální složku, pro produkci /data
 DATA_DIR = '/data' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './data'
-CONFIG_DIR = '/config' if os.path.exists('/config') or os.environ.get('HA_ADDON') else './config'
+CONFIG_DIR = '/share' if os.path.exists('/share') or os.environ.get('HA_ADDON') else './config'
 LOG_FILE = os.path.join(DATA_DIR, 'tcp_data.log')
 
 # Globální proměnné pro log rotaci a IMEI registry
@@ -19,9 +19,37 @@ imei_registry = None
 
 def ensure_data_dir():
     """Vytvoří data složku pokud neexistuje"""
-    os.makedirs(DATA_DIR, exist_ok=True)
+    print(f"Creating data directory: {DATA_DIR}")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        print(f"✅ Successfully created/verified: {DATA_DIR}")
+    except Exception as e:
+        print(f"❌ Failed to create {DATA_DIR}: {e}")
+    
+    print(f"log_to_config setting: {log_to_config}")
     if log_to_config:
-        os.makedirs(os.path.join(CONFIG_DIR, 'teltonika_logs'), exist_ok=True)
+        config_log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
+        print(f"Attempting to create config log directory: {config_log_dir}")
+        try:
+            os.makedirs(config_log_dir, exist_ok=True)
+            print(f"✅ Successfully created/verified config log dir: {config_log_dir}")
+            
+            # Test write permissions
+            test_file = os.path.join(config_log_dir, 'test_write.tmp')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                print(f"✅ Write permissions OK in: {config_log_dir}")
+            except Exception as e:
+                print(f"❌ Write permission test failed in {config_log_dir}: {e}")
+                
+        except Exception as e:
+            print(f"❌ Failed to create config log directory {config_log_dir}: {e}")
+            print(f"   CONFIG_DIR exists: {os.path.exists(CONFIG_DIR)}")
+            print(f"   CONFIG_DIR permissions: {oct(os.stat(CONFIG_DIR).st_mode) if os.path.exists(CONFIG_DIR) else 'N/A'}")
+    else:
+        print("Config logging disabled, using /data/ only")
 
 def get_imei_registry():
     """Vrátí IMEI registry instanci"""

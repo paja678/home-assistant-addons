@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.6
+
+### 🐛 Bug Fixes
+- **Directory Access**: Fixed persistent logging by changing from `/config/` to `/share/` directory for better Docker container compatibility
+- **Mount Point**: Resolved directory creation issues in Home Assistant add-on environment
+
+## 0.3.5
+
+### 🐛 Bug Fixes  
+- **Directory Creation**: Added detailed debug logging for config directory creation
+- **Permission Testing**: Added write permission tests for `/config/teltonika_logs/`
+- **Timing Fix**: Fixed global variable timing issue in directory creation
+
+## 0.3.4
+
+### 🐛 Bug Fixes
+- **Config Directory**: Fixed timing issue where log_to_config was not set before directory creation
+- **Multiple Fallbacks**: Added directory creation at multiple points (startup, first log, first IMEI)
+
 ## 0.3.3
 
 ### 🔧 Improvements
