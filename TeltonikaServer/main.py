@@ -9,20 +9,20 @@ import threading
 import json
 import os
 
-print("DEBUG: Importing tcp_server module...")
+print("DEBUG: Importing tcp_server module...", flush=True)
 try:
     from tcp_server import start_tcp_server, ensure_data_dir
-    print("DEBUG: tcp_server imported successfully")
+    print("DEBUG: tcp_server imported successfully", flush=True)
 except ImportError as e:
-    print(f"ERROR: Failed to import tcp_server: {e}")
+    print(f"ERROR: Failed to import tcp_server: {e}", flush=True)
     raise
 
-print("DEBUG: Importing web_server module...")
+print("DEBUG: Importing web_server module...", flush=True)
 try:
     from web_server import start_web_server
-    print("DEBUG: web_server imported successfully")
+    print("DEBUG: web_server imported successfully", flush=True)
 except ImportError as e:
-    print(f"ERROR: Failed to import web_server: {e}")
+    print(f"ERROR: Failed to import web_server: {e}", flush=True)
     raise
 
 def load_ha_config():
@@ -45,7 +45,7 @@ def main():
     
     # Načti konfiguraci z HA add-onu
     ha_config = load_ha_config()
-    print(f"DEBUG: Loaded HA config: {ha_config}")
+    print(f"DEBUG: Loaded HA config: {ha_config}", flush=True)
     
     # Použij porty z konfigurace pokud jsou dostupné
     tcp_port = ha_config.get('tcp_port', args.tcp_port)
@@ -53,8 +53,8 @@ def main():
     allowed_imeis = ha_config.get('allowed_imeis', [])
     log_to_config = ha_config.get('log_to_config', False)
     
-    print(f"DEBUG: log_to_config = {log_to_config}")
-    print(f"DEBUG: allowed_imeis = {allowed_imeis}")
+    print(f"DEBUG: log_to_config = {log_to_config}", flush=True)
+    print(f"DEBUG: allowed_imeis = {allowed_imeis}", flush=True)
     
     # Pokud je seznam prázdný, žádné filtrování
     if not allowed_imeis:
@@ -62,36 +62,36 @@ def main():
     
     # Nastavíme globální proměnnou před voláním ensure_data_dir
     import tcp_server
-    print(f"DEBUG: Setting tcp_server.log_to_config to {log_to_config}")
+    print(f"DEBUG: Setting tcp_server.log_to_config to {log_to_config}", flush=True)
     tcp_server.log_to_config = log_to_config
-    print(f"DEBUG: tcp_server.log_to_config is now {tcp_server.log_to_config}")
+    print(f"DEBUG: tcp_server.log_to_config is now {tcp_server.log_to_config}", flush=True)
     
     # Vytvoř složky
-    print("DEBUG: Calling ensure_data_dir()...")
+    print("DEBUG: Calling ensure_data_dir()...", flush=True)
     ensure_data_dir()
-    print("DEBUG: ensure_data_dir() completed")
+    print("DEBUG: ensure_data_dir() completed", flush=True)
     
     # Spusť TCP server v samostatném threadu
     tcp_thread = threading.Thread(target=start_tcp_server, args=('0.0.0.0', tcp_port, allowed_imeis, log_to_config))
     tcp_thread.daemon = True
     tcp_thread.start()
     
-    print("✅ TCP server started successfully")
+    print("✅ TCP server started successfully", flush=True)
     
     # Spusť web server v hlavním threadu
-    print("✅ Starting web server...")
+    print("✅ Starting web server...", flush=True)
     try:
         start_web_server(host='0.0.0.0', port=web_port)
-        print("✅ All servers started successfully and running!")
+        print("✅ All servers started successfully and running!", flush=True)
     except KeyboardInterrupt:
         print("Shutting down all servers...")
 
 if __name__ == "__main__":
     try:
-        print("DEBUG: main.py started")
+        print("DEBUG: main.py started", flush=True)
         main()
     except Exception as e:
-        print(f"FATAL ERROR in main(): {e}")
+        print(f"FATAL ERROR in main(): {e}", flush=True)
         import traceback
         traceback.print_exc()
         exit(1)

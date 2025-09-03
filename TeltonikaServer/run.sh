@@ -75,11 +75,21 @@ fi
 echo "DEBUG: Python path and modules:"
 python3 -c "import sys; print('Python path:', sys.path)"
 
-echo "DEBUG: About to execute Python script..."
-echo "Command: python3 main.py --tcp-port $TCP_PORT --web-port $WEB_PORT"
+echo "DEBUG: Running import test first..."
+python3 -u test_imports.py
+TEST_EXIT=$?
+echo "DEBUG: Import test exit code: $TEST_EXIT"
 
-# Použij python3 místo exec pro lepší error handling
-python3 main.py --tcp-port "$TCP_PORT" --web-port "$WEB_PORT"
+if [ $TEST_EXIT -ne 0 ]; then
+    echo "ERROR: Import test failed, aborting!"
+    exit 1
+fi
+
+echo "DEBUG: About to execute Python script..."
+echo "Command: python3 -u main.py --tcp-port $TCP_PORT --web-port $WEB_PORT"
+
+# Použij python3 s -u pro unbuffered output
+python3 -u main.py --tcp-port "$TCP_PORT" --web-port "$WEB_PORT"
 
 # Zachyť exit code
 EXIT_CODE=$?
