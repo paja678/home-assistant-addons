@@ -1,9 +1,10 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
 
 # Set default config path
 CONFIG_PATH="${CONFIG_PATH:-/data/options.json}"
 
-echo "=== Teltonika Server Startup ==="
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "=== Teltonika Server Startup - $TIMESTAMP ==="
 
 # Initialize variables with defaults
 TCP_PORT=3030
@@ -51,6 +52,40 @@ if ! [[ "$WEB_PORT" =~ ^[0-9]+$ ]]; then
     WEB_PORT=3031
 fi
 
-echo "Starting Teltonika Server (TCP: $TCP_PORT, Web: $WEB_PORT)"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "[$TIMESTAMP] Starting Teltonika Server (TCP: $TCP_PORT, Web: $WEB_PORT)"
 
-exec python3 main.py --tcp-port "$TCP_PORT" --web-port "$WEB_PORT"
+# Debug info
+echo "DEBUG: Python version:"
+python3 --version
+
+echo "DEBUG: Current directory:"
+pwd
+
+echo "DEBUG: Files in current directory:"
+ls -la
+
+echo "DEBUG: Checking if main.py exists:"
+if [ -f "main.py" ]; then
+    echo "  main.py found"
+else
+    echo "  main.py NOT found!"
+fi
+
+echo "DEBUG: Python path and modules:"
+python3 -c "import sys; print('Python path:', sys.path)"
+
+echo "DEBUG: About to execute Python script..."
+echo "Command: python3 main.py --tcp-port $TCP_PORT --web-port $WEB_PORT"
+
+# Použij python3 místo exec pro lepší error handling
+python3 main.py --tcp-port "$TCP_PORT" --web-port "$WEB_PORT"
+
+# Zachyť exit code
+EXIT_CODE=$?
+echo "DEBUG: Python script exited with code: $EXIT_CODE"
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "ERROR: Python script failed!"
+    exit $EXIT_CODE
+fi

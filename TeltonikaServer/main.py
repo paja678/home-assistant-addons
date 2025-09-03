@@ -8,8 +8,22 @@ import argparse
 import threading
 import json
 import os
-from tcp_server import start_tcp_server, ensure_data_dir
-from web_server import start_web_server
+
+print("DEBUG: Importing tcp_server module...")
+try:
+    from tcp_server import start_tcp_server, ensure_data_dir
+    print("DEBUG: tcp_server imported successfully")
+except ImportError as e:
+    print(f"ERROR: Failed to import tcp_server: {e}")
+    raise
+
+print("DEBUG: Importing web_server module...")
+try:
+    from web_server import start_web_server
+    print("DEBUG: web_server imported successfully")
+except ImportError as e:
+    print(f"ERROR: Failed to import web_server: {e}")
+    raise
 
 def load_ha_config():
     """Načte konfiguraci z Home Assistant add-onu"""
@@ -47,7 +61,6 @@ def main():
         allowed_imeis = None
     
     # Nastavíme globální proměnnou před voláním ensure_data_dir
-    from tcp_server import log_to_config as current_log_to_config
     import tcp_server
     print(f"DEBUG: Setting tcp_server.log_to_config to {log_to_config}")
     tcp_server.log_to_config = log_to_config
@@ -74,4 +87,11 @@ def main():
         print("Shutting down all servers...")
 
 if __name__ == "__main__":
-    main()
+    try:
+        print("DEBUG: main.py started")
+        main()
+    except Exception as e:
+        print(f"FATAL ERROR in main(): {e}")
+        import traceback
+        traceback.print_exc()
+        exit(1)
