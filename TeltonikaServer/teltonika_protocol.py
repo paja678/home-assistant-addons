@@ -136,7 +136,7 @@ def parse_avl_packet(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, 
     Returns: (records_list, record_count, codec_type)
     """
     try:
-        if len(data) < 12:
+        if len(data) < 16:  # Minimální velikost: preamble(4) + length(4) + codec(1) + count(1) + count(1) + crc(4) = 15
             return None, 0, "unknown"
         
         # Preamble (4 bytes) - měly by být nuly
@@ -151,6 +151,7 @@ def parse_avl_packet(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, 
         
         # Number of records (1 byte)
         record_count = struct.unpack('>B', data[9:10])[0]
+        
         
         if record_count == 0:
             return [], 0, codec_type

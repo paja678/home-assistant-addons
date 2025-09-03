@@ -55,47 +55,6 @@ fi
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "[$TIMESTAMP] Starting Teltonika Server (TCP: $TCP_PORT, Web: $WEB_PORT)"
 
-# Debug info
-echo "DEBUG: Python version:"
-python3 --version
+# Start the server
 
-echo "DEBUG: Current directory:"
-pwd
-
-echo "DEBUG: Files in current directory:"
-ls -la
-
-echo "DEBUG: Checking if main.py exists:"
-if [ -f "main.py" ]; then
-    echo "  main.py found"
-else
-    echo "  main.py NOT found!"
-fi
-
-echo "DEBUG: Python path and modules:"
-python3 -c "import sys; print('Python path:', sys.path)"
-
-echo "DEBUG: Running import test first..."
-python3 -u test_imports.py
-TEST_EXIT=$?
-echo "DEBUG: Import test exit code: $TEST_EXIT"
-
-if [ $TEST_EXIT -ne 0 ]; then
-    echo "ERROR: Import test failed, aborting!"
-    exit 1
-fi
-
-echo "DEBUG: About to execute Python script..."
-echo "Command: python3 -u main.py --tcp-port $TCP_PORT --web-port $WEB_PORT"
-
-# Použij python3 s -u pro unbuffered output
 python3 -u main.py --tcp-port "$TCP_PORT" --web-port "$WEB_PORT"
-
-# Zachyť exit code
-EXIT_CODE=$?
-echo "DEBUG: Python script exited with code: $EXIT_CODE"
-
-if [ $EXIT_CODE -ne 0 ]; then
-    echo "ERROR: Python script failed!"
-    exit $EXIT_CODE
-fi

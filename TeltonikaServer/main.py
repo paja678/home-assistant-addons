@@ -9,21 +9,8 @@ import threading
 import json
 import os
 
-print("DEBUG: Importing tcp_server module...", flush=True)
-try:
-    from tcp_server import start_tcp_server, ensure_data_dir
-    print("DEBUG: tcp_server imported successfully", flush=True)
-except ImportError as e:
-    print(f"ERROR: Failed to import tcp_server: {e}", flush=True)
-    raise
-
-print("DEBUG: Importing web_server module...", flush=True)
-try:
-    from web_server import start_web_server
-    print("DEBUG: web_server imported successfully", flush=True)
-except ImportError as e:
-    print(f"ERROR: Failed to import web_server: {e}", flush=True)
-    raise
+from tcp_server import start_tcp_server, ensure_data_dir
+from web_server import start_web_server
 
 def load_ha_config():
     """Načte konfiguraci z Home Assistant add-onu"""
@@ -45,7 +32,6 @@ def main():
     
     # Načti konfiguraci z HA add-onu
     ha_config = load_ha_config()
-    print(f"DEBUG: Loaded HA config: {ha_config}", flush=True)
     
     # Použij porty z konfigurace pokud jsou dostupné
     tcp_port = ha_config.get('tcp_port', args.tcp_port)
@@ -53,23 +39,16 @@ def main():
     allowed_imeis = ha_config.get('allowed_imeis', [])
     log_to_config = ha_config.get('log_to_config', False)
     
-    print(f"DEBUG: log_to_config = {log_to_config}", flush=True)
-    print(f"DEBUG: allowed_imeis = {allowed_imeis}", flush=True)
-    
     # Pokud je seznam prázdný, žádné filtrování
     if not allowed_imeis:
         allowed_imeis = None
     
     # Nastavíme globální proměnnou před voláním ensure_data_dir
     import tcp_server
-    print(f"DEBUG: Setting tcp_server.log_to_config to {log_to_config}", flush=True)
     tcp_server.log_to_config = log_to_config
-    print(f"DEBUG: tcp_server.log_to_config is now {tcp_server.log_to_config}", flush=True)
     
     # Vytvoř složky
-    print("DEBUG: Calling ensure_data_dir()...", flush=True)
     ensure_data_dir()
-    print("DEBUG: ensure_data_dir() completed", flush=True)
     
     # Spusť TCP server v samostatném threadu
     tcp_thread = threading.Thread(target=start_tcp_server, args=('0.0.0.0', tcp_port, allowed_imeis, log_to_config))
@@ -88,7 +67,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        print("DEBUG: main.py started", flush=True)
+        print("Starting Teltonika Server...", flush=True)
         main()
     except Exception as e:
         print(f"FATAL ERROR in main(): {e}", flush=True)
