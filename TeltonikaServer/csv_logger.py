@@ -5,6 +5,7 @@ import csv
 import os
 from datetime import datetime
 from collections import deque
+import pytz
 
 
 class CSVLogger:
@@ -14,13 +15,40 @@ class CSVLogger:
         self.server_log = os.path.join(base_dir, 'server.log')
         self.csv_headers = ['timestamp', 'raw_data']
         
+        # Nastavení časové zóny - zkus HA timezone, pak lokální
+        self.timezone = self._get_timezone()
+        
         # Vytvoř základní strukturu
         os.makedirs(self.devices_dir, exist_ok=True)
         os.makedirs(os.path.dirname(self.server_log), exist_ok=True)
     
+    def _get_timezone(self):
+        """Získej časovou zónu z HA prostředí nebo systému"""
+        try:
+            # Zkus Home Assistant timezone
+            tz_name = os.environ.get('TZ', None)
+            if tz_name:
+                return pytz.timezone(tz_name)
+        except:
+            pass
+            
+        try:
+            # Zkus evropskou časovou zónu (Praha/Česká republika)
+            return pytz.timezone('Europe/Prague')
+        except:
+            # Fallback na systémovou časovou zónu
+            return None
+    
+    def _get_local_time(self):
+        """Vrátí aktuální čas v správné časové zóně"""
+        if self.timezone:
+            return datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
     def log_server_event(self, message):
         """Zaloguje událost do hlavního server logu"""
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestamp = self._get_local_time()
         with open(self.server_log, 'a', encoding='utf-8') as f:
             f.write(f"[{timestamp}] {message}\n")
     
@@ -51,7 +79,7 @@ class CSVLogger:
                 writer.writerow(self.csv_headers)
             
             # Vytvoř timestamp
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = self._get_local_time()
             
             # Vytvoř CSV řádek - jen čas a raw data
             row = [timestamp, hex_data]
