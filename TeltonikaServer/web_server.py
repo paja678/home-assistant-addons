@@ -296,7 +296,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 const response = await fetch('/api/server_log?limit=100');
                 const text = await response.text();
                 
-                document.getElementById('server-log-content').innerHTML = text.split('\\n').join('<br>');
+                document.getElementById('server-log-content').innerHTML = text.split('\n').join('<br>');
                 
                 // Scroll na konec
                 const container = document.getElementById('server-log-content');
@@ -426,8 +426,10 @@ def start_web_server(host='0.0.0.0', port=3031, base_dir=None):
     
     class TeltonikaWebHandlerWithBaseDir(TeltonikaWebHandler):
         def __init__(self, *args, **kwargs):
+            # Musíme volat parent konstruktor před nastavením base_dir
+            super().__init__(*args, **kwargs)
+            # Přepíšeme base_dir po inicializaci
             self.base_dir = base_dir
-            super(TeltonikaWebHandler, self).__init__(*args, **kwargs)
     
     server = HTTPServer((host, port), TeltonikaWebHandlerWithBaseDir)
     print(f"Web server listening on http://{host}:{port}")
