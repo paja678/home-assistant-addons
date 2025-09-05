@@ -22,6 +22,23 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         print(f"[DEBUG] Parsed path: {path}")
         print(f"[DEBUG] Base dir: {getattr(self, 'base_dir', 'NOT SET')}")
         
+        # Ingress detection and debugging
+        headers = dict(self.headers)
+        print(f"[DEBUG] All request headers: {headers}")
+        
+        # Check for Ingress-specific headers
+        ingress_headers = ['x-ingress-path', 'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host']
+        is_ingress = False
+        for header in ingress_headers:
+            if header in headers:
+                print(f"[DEBUG] Ingress header found: {header} = {headers[header]}")
+                is_ingress = True
+        
+        if is_ingress:
+            print(f"[DEBUG] INGRESS DETECTED - Request likely from Home Assistant Ingress")
+        else:
+            print(f"[DEBUG] DIRECT ACCESS - Request likely from direct IP access")
+        
         try:
             if path == '/' or path == '/index.html':
                 self._serve_main_page()
@@ -205,8 +222,8 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         async function loadOverview() {
             console.log('loadOverview called');
             try {
-                console.log('Fetching devices from /api/devices');
-                const response = await fetch('/api/devices');
+                console.log('Fetching devices from api/devices');
+                const response = await fetch('api/devices');
                 console.log('Response status:', response.status);
                 console.log('Response headers:', response.headers);
                 
@@ -251,8 +268,8 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         async function loadDevices() {
             console.log('loadDevices called');
             try {
-                console.log('Fetching devices from /api/devices');
-                const response = await fetch('/api/devices');
+                console.log('Fetching devices from api/devices');
+                const response = await fetch('api/devices');
                 console.log('Response status:', response.status);
                 
                 if (!response.ok) {
@@ -301,7 +318,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         async function loadDeviceData(imei) {
             console.log('loadDeviceData called for IMEI:', imei);
             try {
-                const url = `/api/device_data?imei=$$${imei}&limit=100`;
+                const url = `api/device_data?imei=$$${imei}&limit=100`;
                 console.log('Fetching device data from:', url);
                 const response = await fetch(url);
                 console.log('Response status:', response.status);
@@ -322,7 +339,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 
                 let html = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3>GPS Data pro zařízení $${imei} (posledních $${records.length} záznamů)</h3>
-                    <a href="/api/download_csv?imei=$${imei}" class="download-btn">📥 Stáhnout CSV</a>
+                    <a href="api/download_csv?imei=$${imei}" class="download-btn">📥 Stáhnout CSV</a>
                 </div>`;
                 html += '<table><tr>';
                 html += '<th>Čas</th><th>Souřadnice</th><th>Rychlost</th><th>Výška</th><th>Satelity</th><th>Směr</th><th>I/O Data</th>';
@@ -358,8 +375,8 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         async function loadServerLog() {
             console.log('loadServerLog called');
             try {
-                console.log('Fetching server log from /api/server_log');
-                const response = await fetch('/api/server_log?limit=100');
+                console.log('Fetching server log from api/server_log');
+                const response = await fetch('api/server_log?limit=100');
                 console.log('Response status:', response.status);
                 
                 if (!response.ok) {
