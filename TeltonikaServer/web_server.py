@@ -10,10 +10,7 @@ from csv_logger import CSVLogger
 from buffer_manager import BufferManager
 
 class TeltonikaWebHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        # Stejná logika jako v tcp_server.py
-        self.base_dir = '/share/teltonika' if os.path.exists('/data') else './config'
-        super().__init__(*args, **kwargs)
+    # base_dir bude nastaven při vytvoření instance
 
     def do_GET(self):
         """Zpracuje GET požadavky"""
@@ -164,10 +161,13 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
     
 
     <script>
+        console.log('Script starting...');
+        
         let currentDevice = null;
         let refreshInterval = null;
         
         function showTab(tabName, element) {
+            console.log('showTab called with:', tabName, element);
             // Skryj všechny taby
             document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -206,10 +206,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                     html += '<table><tr><th>IMEI</th><th>Název</th><th>Poslední záznam</th><th>Počet záznamů</th></tr>';
                     devices.forEach(device => {
                         html += `<tr>
-                            <td>${device.imei}</td>
-                            <td>Device ${device.imei}</td>
-                            <td>${device.last_seen}</td>
-                            <td>${device.record_count}</td>
+                            <td>$${device.imei}</td>
+                            <td>Device $${device.imei}</td>
+                            <td>$${device.last_seen}</td>
+                            <td>$${device.record_count}</td>
                         </tr>`;
                     });
                     html += '</table>';
@@ -229,10 +229,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 let html = '';
                 devices.forEach(device => {
                     const isSelected = currentDevice === device.imei ? 'selected' : '';
-                    html += `<div class="device-item ${isSelected}" onclick="selectDevice('${device.imei}')">
-                        <strong>${device.imei}</strong><br>
-                        <small>Záznamů: ${device.record_count}</small><br>
-                        <small>Naposledy: ${device.last_seen}</small>
+                    html += `<div class="device-item $${isSelected}" onclick="selectDevice('$${device.imei}')">
+                        <strong>$${device.imei}</strong><br>
+                        <small>Záznamů: $${device.record_count}</small><br>
+                        <small>Naposledy: $${device.last_seen}</small>
                     </div>`;
                 });
                 
@@ -255,7 +255,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         
         async function loadDeviceData(imei) {
             try {
-                const response = await fetch(`/api/device_data?imei=${imei}&limit=100`);
+                const response = await fetch(`/api/device_data?imei=$$${imei}&limit=100`);
                 const records = await response.json();
                 
                 if (records.length === 0) {
@@ -264,23 +264,23 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 }
                 
                 let html = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>GPS Data pro zařízení ${imei} (posledních ${records.length} záznamů)</h3>
-                    <a href="/api/download_csv?imei=${imei}" class="download-btn">📥 Stáhnout CSV</a>
+                    <h3>GPS Data pro zařízení $${imei} (posledních $${records.length} záznamů)</h3>
+                    <a href="/api/download_csv?imei=$${imei}" class="download-btn">📥 Stáhnout CSV</a>
                 </div>`;
                 html += '<table><tr>';
                 html += '<th>Čas</th><th>Souřadnice</th><th>Rychlost</th><th>Výška</th><th>Satelity</th><th>Směr</th><th>I/O Data</th>';
                 html += '</tr>';
                 
                 records.forEach(record => {
-                    const coords = `${parseFloat(record.latitude).toFixed(6)}, ${parseFloat(record.longitude).toFixed(6)}`;
+                    const coords = `$${parseFloat(record.latitude).toFixed(6)}, $${parseFloat(record.longitude).toFixed(6)}`;
                     html += `<tr>
-                        <td>${record.timestamp}</td>
-                        <td class="coordinates">${coords}</td>
-                        <td class="speed">${record.speed} km/h</td>
-                        <td>${record.altitude} m</td>
-                        <td>${record.satellites}</td>
-                        <td>${record.angle}°</td>
-                        <td><small>${record.io_data}</small></td>
+                        <td>$${record.timestamp}</td>
+                        <td class="coordinates">$${coords}</td>
+                        <td class="speed">$${record.speed} km/h</td>
+                        <td>$${record.altitude} m</td>
+                        <td>$${record.satellites}</td>
+                        <td>$${record.angle}°</td>
+                        <td><small>$${record.io_data}</small></td>
                     </tr>`;
                 });
                 
@@ -296,7 +296,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 const response = await fetch('/api/server_log?limit=100');
                 const text = await response.text();
                 
-                document.getElementById('server-log-content').innerHTML = text.split('\n').join('<br>');
+                document.getElementById('server-log-content').innerHTML = text.replace(/\\n/g, '<br>');
                 
                 // Scroll na konec
                 const container = document.getElementById('server-log-content');
@@ -309,6 +309,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         
         // Načti přehled při načtení stránky
         window.onload = function() {
+            console.log('Page loaded, calling loadOverview...');
             loadOverview();
         };
         
@@ -318,10 +319,14 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 clearInterval(refreshInterval);
             }
         };
+        
+        console.log('Script completed. showTab function:', typeof showTab);
     </script>
 </body>
 </html>"""
         
+        # Nahradíme $$ za $ v JavaScript template literals
+        html = html.replace('$${', '${')
         self._send_response(200, html, 'text/html')
 
     def _serve_devices_api(self):
@@ -424,14 +429,13 @@ def start_web_server(host='0.0.0.0', port=3031, base_dir=None):
     if base_dir is None:
         base_dir = '/share/teltonika' if os.path.exists('/data') else './config'
     
-    class TeltonikaWebHandlerWithBaseDir(TeltonikaWebHandler):
+    # Vytvoříme handler s nastaveným base_dir
+    class ConfiguredHandler(TeltonikaWebHandler):
         def __init__(self, *args, **kwargs):
-            # Musíme volat parent konstruktor před nastavením base_dir
-            super().__init__(*args, **kwargs)
-            # Přepíšeme base_dir po inicializaci
             self.base_dir = base_dir
+            super().__init__(*args, **kwargs)
     
-    server = HTTPServer((host, port), TeltonikaWebHandlerWithBaseDir)
+    server = HTTPServer((host, port), ConfiguredHandler)
     print(f"Web server listening on http://{host}:{port}")
     
     try:
