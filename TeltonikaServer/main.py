@@ -60,7 +60,9 @@ def main():
     # Spusť web server v hlavním threadu
     print("✅ Starting web server...", flush=True)
     try:
-        start_web_server(host='0.0.0.0', port=web_port)
+        # Použij stejný CONFIG_DIR jako TCP server
+        config_dir = '/share/teltonika' if os.path.exists('/data') else './config'
+        start_web_server(host='0.0.0.0', port=web_port, base_dir=config_dir)
     except KeyboardInterrupt:
         print("Shutting down all servers...")
 

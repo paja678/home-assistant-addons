@@ -61,7 +61,10 @@ def parse_avl_record(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
     offset += 1
     
     # GPS Data (15 bytes)
-    gps_data = struct.unpack('>IIHHHbb', data[offset:offset+15])
+    if offset + 15 > len(data):
+        print(f"Not enough data for GPS at offset {offset}, need 15 bytes, have {len(data) - offset}")
+        return None, offset
+    gps_data = struct.unpack('>iiHHBH', data[offset:offset+15])  # Changed last part to BH instead of Hbb
     record['gps'] = {
         'longitude': gps_data[0] / 10000000.0,  # Degrees * 10^7
         'latitude': gps_data[1] / 10000000.0,   # Degrees * 10^7
@@ -130,59 +133,129 @@ def parse_avl_record(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
     
     return record, offset
 
-def parse_avl_packet(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, str]:
+def parse_avl_packet_with_length(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, str, int]:
     """
-    Parsuje celý AVL packet
-    Returns: (records_list, record_count, codec_type)
+    Parsuje AVL packet a vrací i jeho celkovou délku
+    Returns: (records_list, record_count, codec_type, packet_length)
     """
     try:
-        if len(data) < 16:  # Minimální velikost: preamble(4) + length(4) + codec(1) + count(1) + count(1) + crc(4) = 15
-            return None, 0, "unknown"
+        if len(data) < 16:
+            return None, 0, "unknown", 0
         
+        # Standardní Teltonika AVL packet struktura
         # Preamble (4 bytes) - měly by být nuly
-        preamble = struct.unpack('>I', data[0:4])[0]
-        
+        if data[0:4] != b'\x00\x00\x00\x00':
+            return None, 0, "unknown", 0
+            
         # Data field length (4 bytes)
         data_length = struct.unpack('>I', data[4:8])[0]
         
+        # Validace délky
+        if data_length < 10 or data_length > 10000:
+            return None, 0, "unknown", 0
+            
+        # Celková délka packetu: preamble(4) + length(4) + data + CRC(4)
+        total_packet_length = 8 + data_length + 4
+        
+        # Kontrola zda máme dostatek dat
+        if len(data) < total_packet_length:
+            print(f"Incomplete packet: need {total_packet_length} bytes, have {len(data)}")
+            return None, 0, "unknown", 0
+        
         # Codec ID (1 byte)
-        codec_id = struct.unpack('>B', data[8:9])[0]
+        codec_id = data[8]
         codec_type = "codec8" if codec_id == 0x08 else "codec8_extended" if codec_id == 0x8E else f"unknown_{codec_id}"
         
         # Number of records (1 byte)
-        record_count = struct.unpack('>B', data[9:10])[0]
+        record_count = data[9]
         
-        
-        if record_count == 0:
-            return [], 0, codec_type
-        
-        # Parse records - ale pro testování zkusíme jednodušší parsing
+        if codec_id not in [0x08, 0x8E] or record_count == 0:
+            return None, 0, codec_type, 0
+            
+        # Parse records
         records = []
-        offset = 10
+        offset = 10  # After header
         
-        # Pro účely fungování s jednoduchými packety
-        if record_count > 0:
-            dummy_record = {
-                'timestamp': datetime.now(),
-                'priority': 1,
-                'gps': {
-                    'longitude': 24.0,  # Nějaké testovací souřadnice
-                    'latitude': 54.0, 
-                    'altitude': 100,
-                    'angle': 0,
-                    'satellites': 8,
-                    'speed': 60
-                },
-                'io_event': 0,
-                'io_count': 1,
-                'io_data': {239: 1}  # Ignition ON
-            }
-            # Vytvořme požadovaný počet záznamů
-            for _ in range(record_count):
-                records.append(dummy_record.copy())
+        for i in range(record_count):
+            if offset + 34 > len(data):  # Minimum record size
+                break
+                
+            try:
+                record, new_offset = parse_avl_record(data, offset)
+                if record:
+                    records.append(record)
+                    offset = new_offset
+                else:
+                    break
+            except Exception as e:
+                print(f"Error parsing record {i}: {e}")
+                break
         
-        # Pro teď ignorujeme CRC a necháme parsing projít
-        return records, record_count, codec_type
+        return records, len(records), codec_type, total_packet_length
+        
+    except Exception as e:
+        print(f"Error in parse_avl_packet_with_length: {e}")
+        return None, 0, "error", 0
+
+def parse_avl_packet(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, str]:
+    """
+    Parsuje celý AVL packet s robustním hledáním struktury
+    Returns: (records_list, record_count, codec_type)
+    """
+    try:
+        if len(data) < 16:
+            return None, 0, "unknown"
+        
+        # Zkus najít správnou AVL strukturu na různých pozicích
+        for start_offset in [0, 4, 8, 16]:
+            if start_offset + 16 > len(data):
+                continue
+                
+            try:
+                # Zkus parsovat jako standardní AVL packet
+                preamble = struct.unpack('>I', data[start_offset:start_offset+4])[0]
+                data_length = struct.unpack('>I', data[start_offset+4:start_offset+8])[0]
+                codec_id = struct.unpack('>B', data[start_offset+8:start_offset+9])[0]
+                record_count = struct.unpack('>B', data[start_offset+9:start_offset+10])[0]
+                
+                # Validace
+                if (codec_id in [0x08, 0x8E] and 
+                    record_count > 0 and record_count < 100 and
+                    data_length > 0 and data_length < 100000):
+                    
+                    codec_type = "codec8" if codec_id == 0x08 else "codec8_extended"
+                    print(f"Found valid AVL structure at offset {start_offset}: codec={codec_id:02X}, count={record_count}")
+                    
+                    if record_count == 0:
+                        return [], 0, codec_type
+                    
+                    # Parse records starting after header
+                    records = []
+                    offset = start_offset + 10
+                    
+                    for i in range(record_count):
+                        if offset + 34 > len(data):
+                            break
+                            
+                        try:
+                            record, new_offset = parse_avl_record(data, offset)
+                            if record:
+                                records.append(record)
+                                offset = new_offset
+                            else:
+                                break
+                        except Exception as e:
+                            print(f"Error parsing record {i} at offset {offset}: {e}")
+                            break
+                    
+                    return records, len(records), codec_type
+                    
+            except Exception as e:
+                continue
+        
+        # Pokud nenajdeme validní strukturu, vrátíme chybu
+        print(f"No valid AVL structure found in {len(data)} bytes")
+        return None, 0, "unknown"
         
     except Exception as e:
         print(f"Chyba při parsování AVL packet: {e}")

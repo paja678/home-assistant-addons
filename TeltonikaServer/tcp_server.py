@@ -3,20 +3,25 @@ import threading
 import os
 import glob
 import binascii
+import struct
 from datetime import datetime
-from teltonika_protocol import parse_imei, parse_avl_packet, format_record_for_log
+from teltonika_protocol import parse_imei, parse_avl_packet, parse_avl_packet_with_length, format_record_for_log
 from imei_registry import IMEIRegistry
+from csv_logger import CSVLogger
+from buffer_manager import BufferManager
 
 # Pro vývoj použij lokální složku, pro produkci /data
 DATA_DIR = '/data' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './data'
-# V HA addon prostředí použij /share i když neexistuje (bude namountováno)
-CONFIG_DIR = '/share' if os.path.exists('/data') else './config'
+# V HA addon prostředí použij /share/teltonika i když neexistuje (bude namountováno)
+CONFIG_DIR = '/share/teltonika' if os.path.exists('/data') else './config'
 LOG_FILE = os.path.join(DATA_DIR, 'tcp_data.log')
 
-# Globální proměnné pro log rotaci a IMEI registry
+# Globální proměnné pro log rotaci, IMEI registry, CSV logger a buffer manager
 current_log_file = None
 log_to_config = False
 imei_registry = None
+csv_logger = None
+buffer_manager = None
 
 def ensure_data_dir():
     """Vytvoří data složku pokud neexistuje"""
@@ -39,12 +44,26 @@ def get_imei_registry():
     """Vrátí IMEI registry instanci"""
     global imei_registry
     if imei_registry is None:
-        registry_dir = os.path.join(CONFIG_DIR, 'teltonika_logs') if log_to_config else DATA_DIR
+        registry_dir = CONFIG_DIR
         # Zajistíme, že složka existuje
         os.makedirs(registry_dir, exist_ok=True)
         registry_path = os.path.join(registry_dir, 'imei_registry.json')
         imei_registry = IMEIRegistry(registry_path)
     return imei_registry
+
+def get_csv_logger():
+    """Vrátí CSV logger instanci"""
+    global csv_logger
+    if csv_logger is None:
+        csv_logger = CSVLogger(CONFIG_DIR)
+    return csv_logger
+
+def get_buffer_manager():
+    """Vrátí buffer manager instanci"""
+    global buffer_manager
+    if buffer_manager is None:
+        buffer_manager = BufferManager(CONFIG_DIR)
+    return buffer_manager
 
 def get_log_file():
     """Vrátí cestu k aktuálnímu log souboru"""
@@ -82,17 +101,25 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
     """Zpracuje komunikaci s jednotlivým klientem podle Teltonika AVL protokolu"""
     print(f"Teltonika connection from {client_address}")
     client_imei = None
+    csv_logger = get_csv_logger()
+    buffer_mgr = get_buffer_manager()
+    
+    csv_logger.log_server_event(f"New connection from {client_address}")
     
     with client_socket:
         while True:
             try:
-                data = client_socket.recv(1024)
+                data = client_socket.recv(4096)  # Větší buffer
                 if not data:
                     break
-
+                
                 # Log raw data pro debugging
                 hex_data = binascii.hexlify(data).decode('utf-8').upper()
                 print(f"Raw data from {client_address}: {hex_data}")
+                
+                # Pokud máme IMEI, log raw data
+                if client_imei:
+                    csv_logger.log_raw_data(client_address, client_imei, hex_data)
 
                 # Pokud ještě nemáme IMEI, pokus se ho parsovat
                 if client_imei is None:
@@ -117,82 +144,98 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         client_socket.sendall(b"\x01")
                         
                         # Zaloguj IMEI
-                        try:
-                            log_file = get_log_file()
-                            with open(log_file, 'a', encoding='utf-8') as f:
-                                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                status = "NEW DEVICE" if is_new_device else "KNOWN DEVICE"
-                                f.write(f"[{timestamp}] IMEI: {client_imei} connected from {client_address} ({status})\n")
-                        except Exception as e:
-                            print(f"Chyba při zápisu IMEI do logu: {e}")
+                        status = "NEW DEVICE" if is_new_device else "KNOWN DEVICE"
+                        csv_logger.log_server_event(f"IMEI {client_imei} connected from {client_address} ({status})")
+                        
+                        # Vytvoř device info pokud je nový
+                        if is_new_device:
+                            csv_logger.create_device_info(client_imei)
                         
                         continue
                     else:
                         print(f"Invalid IMEI handshake from {client_address}")
+                        csv_logger.log_server_event(f"Invalid IMEI handshake from {client_address}")
                         client_socket.sendall(b"\x00")  # Reject
                         break
 
-                # Parsuj AVL data packet
-                records, record_count, codec_type = parse_avl_packet(data)
-                
-                if records and record_count > 0:
-                    print(f"Received {record_count} AVL records ({codec_type}) from IMEI {client_imei}")
+                # Pokud máme IMEI, zpracuj AVL data pomocí buffer manageru
+                if client_imei:
+                    # Přidej data do bufferu
+                    buffer_mgr.append_data(client_imei, data)
                     
-                    # Zaregistruj záznamy v IMEI registru
-                    if client_imei:
-                        registry = get_imei_registry()
-                        registry.register_avl_records(client_imei, record_count)
+                    # Získej kompletní packety
+                    complete_packets, remaining = buffer_mgr.get_complete_packets(client_imei)
                     
-                    # Zaloguj parsed data
-                    try:
-                        log_file = get_log_file()
-                        with open(log_file, 'a', encoding='utf-8') as f:
+                    total_records = 0
+                    
+                    for packet in complete_packets:
+                        records, record_count, codec_type, packet_length = parse_avl_packet_with_length(packet)
+                        
+                        if records and record_count > 0:
+                            print(f"Parsed {record_count} AVL records ({codec_type}) from IMEI {client_imei}")
+                            
+                            # Zaregistruj záznamy v IMEI registru
+                            registry = get_imei_registry()
+                            registry.register_avl_records(client_imei, record_count)
+                            
+                            # Zaloguj GPS záznamy do CSV
                             for record in records:
-                                log_entry = format_record_for_log(record, client_imei or "unknown")
-                                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                f.write(f"[{timestamp}] {log_entry}\n")
-                    except Exception as e:
-                        print(f"Chyba při zápisu AVL dat do logu: {e}")
+                                csv_logger.log_gps_record(client_imei, record)
+                            
+                            total_records += record_count
+                        else:
+                            print(f"Failed to parse AVL packet from IMEI {client_imei}")
+                            csv_logger.log_server_event(f"Failed to parse AVL packet from IMEI {client_imei}")
                     
-                    # Odpověz s počtem zpracovaných záznamů (4 bytes, big endian)
-                    response = record_count.to_bytes(4, 'big')
-                    client_socket.sendall(response)
-                    print(f"Sent ACK for {record_count} records")
-                    
+                    if total_records > 0:
+                        # Odpověz s celkovým počtem zpracovaných záznamů
+                        response = total_records.to_bytes(4, 'big')
+                        client_socket.sendall(response)
+                        print(f"Sent ACK for {total_records} total records")
+                        csv_logger.log_server_event(f"Processed {total_records} GPS records from IMEI {client_imei}")
+                    else:
+                        # Odpověz s 0 záznamy
+                        client_socket.sendall(b"\x00\x00\x00\x00")
                 else:
-                    print(f"Failed to parse AVL packet from {client_address}")
-                    # Zaloguj raw data pokud parsing selhal
-                    try:
-                        log_file = get_log_file()
-                        with open(log_file, 'a', encoding='utf-8') as f:
-                            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            f.write(f"[{timestamp}] RAW DATA from {client_address} (IMEI: {client_imei or 'unknown'}): {hex_data}\n")
-                    except Exception as e:
-                        print(f"Chyba při zápisu raw dat do logu: {e}")
-                    
-                    # Odpověz s 0 záznamy
-                    client_socket.sendall(b"\x00\x00\x00\x00")
+                    # Nemáme ještě IMEI - čekáme na handshake
+                    pass
                     
             except Exception as e:
                 print(f"Chyba při zpracování dat od {client_address}: {e}")
+                csv_logger.log_server_event(f"Error processing data from {client_address}: {e}")
                 break
+        
+        # Cleanup při ukončení spojení
+        if client_imei:
+            csv_logger.log_server_event(f"IMEI {client_imei} disconnected from {client_address}")
+            # Vyčisti buffer pro toto IMEI
+            buffer_mgr.clear_buffer(client_imei)
 
 def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_logging=False):
     """Spustí TCP server pro příjem dat od Teltonika zařízení"""
     global log_to_config
     log_to_config = config_logging
+    
+    # Inicializuj CSV logger a buffer manager (vytvoří potřebné složky)
+    csv_logger = get_csv_logger()
+    buffer_mgr = get_buffer_manager()
+    csv_logger.log_server_event("TCP server starting up...")
+    
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((host, port))
     server.listen(5)
     
-    log_location = "/share/teltonika_logs/" if log_to_config else "/data/"
+    log_location = CONFIG_DIR
     if allowed_imeis:
         print(f"TCP server listening on {host}:{port} with IMEI filter: {allowed_imeis}")
-        print(f"Logs saved to: {log_location}")
+        csv_logger.log_server_event(f"Server started with IMEI filter: {allowed_imeis}")
     else:
         print(f"TCP server listening on {host}:{port} (all IMEIs allowed)")
-        print(f"Logs saved to: {log_location}")
+        csv_logger.log_server_event("Server started - all IMEIs allowed")
+    
+    print(f"Data saved to: {log_location}")
+    csv_logger.log_server_event(f"Data directory: {log_location}")
 
     try:
         while True:

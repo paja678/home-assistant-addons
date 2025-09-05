@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.4.0 🚀 MAJOR ARCHITECTURE REDESIGN
+
+### ✨ Revolutionary Features
+- **🗂️ Per-Device CSV Logging**: Každé zařízení má vlastní CSV soubor s GPS historií
+- **🔄 TCP Buffer Management**: Robustní řešení TCP fragmentace s file-based buffery  
+- **📊 Modern Web Interface**: Nové tabové rozhraní s přehledem zařízení
+- **📁 Structured Data Storage**: Organizovaná struktura složek `/share/teltonika/`
+- **🛡️ Buffer Monitoring**: Real-time monitoring TCP bufferů a jejich velikostí
+
+### 🏗️ Architecture Changes
+- **CSV Logger System**: Kompletně nový systém pro strukturované ukládání GPS dat
+- **Buffer Manager**: Inteligentní správa TCP packet fragmentů per-IMEI  
+- **Unified Directory**: Vše pod `/share/teltonika/` pro konzistenci
+- **Device Management**: Automatické vytváření device info a historie
+
+### 🌐 Web Interface Overhaul
+- **4 Tabs**: Přehled, Zařízení, Server Log, Buffery
+- **Device Selection**: Kliknout na zařízení → zobraz GPS data  
+- **Auto-refresh**: Automatické obnovování logů a bufferů
+- **GPS Data Tables**: Formátované souřadnice, rychlost, I/O data
+- **Buffer Status**: Monitoring velikosti a stavu TCP bufferů
+
+### 🔧 Technical Improvements  
+- **Zero Duplicates**: Vyřešena fragmentace TCP - žádné duplicitní záznamy
+- **Proper Packet Assembly**: Správné spojování fragmentovaných TCP paketů
+- **Enhanced Error Handling**: Komprehensivní error handling a logování
+- **Per-IMEI Processing**: Separátní buffery a CSV soubory pro každé zařízení
+
+### 📂 New File Structure
+```
+/share/teltonika/
+├── devices/
+│   └── {imei}/
+│       ├── data.csv      # GPS záznamy
+│       └── info.json     # Device metadata
+├── buffers/
+│   └── {imei}.buffer     # TCP buffery
+└── server.log            # Server události
+```
+
+### 🐛 Major Bug Fixes
+- **TCP Fragmentation**: Kompletně vyřešeno - žádné ztracené/duplicitní packety
+- **Parsing Errors**: Robustní parsing s buffer management
+- **Memory Leaks**: Správné čištění bufferů při odpojení
+- **Directory Issues**: Automatické vytváření všech potřebných složek
+
 ## 0.5.1
 
 ### 🚀 New Features
