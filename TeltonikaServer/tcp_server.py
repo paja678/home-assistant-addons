@@ -10,6 +10,11 @@ from imei_registry import IMEIRegistry
 from csv_logger import CSVLogger
 from buffer_manager import BufferManager
 
+def log_print(message):
+    """Print s časovou značkou pro HA addon log"""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] {message}", flush=True)
+
 # Pro vývoj použij lokální složku, pro produkci /data
 DATA_DIR = '/data' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './data'
 # V HA addon prostředí použij /share/teltonika i když neexistuje (bude namountováno)
@@ -67,39 +72,19 @@ def get_buffer_manager():
 
 def get_log_file():
     """Vrátí cestu k aktuálnímu log souboru"""
-    global current_log_file
-    
-    if log_to_config:
-        # Ukládej do /config/teltonika_logs/ s datem a časem
-        if not current_log_file:
-            log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
-            # Zajistíme, že složka existuje
-            os.makedirs(log_dir, exist_ok=True)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'teltonika_{timestamp}.log'
-            current_log_file = os.path.join(log_dir, filename)
-        return current_log_file
-    else:
-        # Standardní log do /data/
-        return LOG_FILE
+    # Nyní používáme pouze server.log v hlavní složce
+    return os.path.join(CONFIG_DIR, 'server.log')
 
 def get_all_log_files():
     """Vrátí seznam všech log souborů seřazených podle data"""
-    if log_to_config:
-        log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
-        if os.path.exists(log_dir):
-            pattern = os.path.join(log_dir, 'teltonika_*.log')
-            files = glob.glob(pattern)
-            return sorted(files, reverse=True)  # Nejnovější první
-    
-    # Pro standardní log vrať jen aktuální soubor
-    if os.path.exists(LOG_FILE):
-        return [LOG_FILE]
+    server_log = os.path.join(CONFIG_DIR, 'server.log')
+    if os.path.exists(server_log):
+        return [server_log]
     return []
 
 def handle_client(client_socket, client_address, allowed_imeis=None):
     """Zpracuje komunikaci s jednotlivým klientem podle Teltonika AVL protokolu"""
-    print(f"Teltonika connection from {client_address}")
+    log_print(f"Teltonika connection from {client_address}")
     client_imei = None
     csv_logger = get_csv_logger()
     buffer_mgr = get_buffer_manager()
@@ -113,9 +98,9 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                 if not data:
                     break
                 
-                # Log raw data pro debugging
+                # Log raw data pro debugging  
                 hex_data = binascii.hexlify(data).decode('utf-8').upper()
-                print(f"Raw data from {client_address}: {hex_data}")
+                log_print(f"Raw data from {client_address}: {hex_data[:100]}{'...' if len(hex_data) > 100 else ''}")
                 
                 # Pokud máme IMEI, log raw data
                 if client_imei:
@@ -131,14 +116,14 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         # Zkontroluj, zda je IMEI povoleno
                         registry = get_imei_registry()
                         if not registry.is_imei_allowed(client_imei, allowed_imeis or []):
-                            print(f"IMEI {client_imei} not in allowed list - connection refused")
+                            log_print(f"IMEI {client_imei} not in allowed list - connection refused")
                             client_socket.sendall(b"\x00")  # Reject
                             break
                         
                         # Zaregistruj IMEI v registru
                         is_new_device = registry.register_imei_connection(client_imei, client_ip)
                         
-                        print(f"IMEI authenticated: {client_imei} {'(NEW DEVICE)' if is_new_device else ''}")
+                        log_print(f"IMEI authenticated: {client_imei} {'(NEW DEVICE)' if is_new_device else ''}")
                         
                         # Odpověz na IMEI handshake - 0x01 = accept
                         client_socket.sendall(b"\x01")
@@ -153,7 +138,7 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         
                         continue
                     else:
-                        print(f"Invalid IMEI handshake from {client_address}")
+                        log_print(f"Invalid IMEI handshake from {client_address}")
                         csv_logger.log_server_event(f"Invalid IMEI handshake from {client_address}")
                         client_socket.sendall(b"\x00")  # Reject
                         break
@@ -172,7 +157,7 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         records, record_count, codec_type, packet_length = parse_avl_packet_with_length(packet)
                         
                         if records and record_count > 0:
-                            print(f"Parsed {record_count} AVL records ({codec_type}) from IMEI {client_imei}")
+                            log_print(f"Parsed {record_count} AVL records ({codec_type}) from IMEI {client_imei}")
                             
                             # Zaregistruj záznamy v IMEI registru
                             registry = get_imei_registry()
@@ -184,14 +169,14 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                             
                             total_records += record_count
                         else:
-                            print(f"Failed to parse AVL packet from IMEI {client_imei}")
+                            log_print(f"Failed to parse AVL packet from IMEI {client_imei}")
                             csv_logger.log_server_event(f"Failed to parse AVL packet from IMEI {client_imei}")
                     
                     if total_records > 0:
                         # Odpověz s celkovým počtem zpracovaných záznamů
                         response = total_records.to_bytes(4, 'big')
                         client_socket.sendall(response)
-                        print(f"Sent ACK for {total_records} total records")
+                        log_print(f"Sent ACK for {total_records} total records")
                         csv_logger.log_server_event(f"Processed {total_records} GPS records from IMEI {client_imei}")
                     else:
                         # Odpověz s 0 záznamy
@@ -201,12 +186,13 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                     pass
                     
             except Exception as e:
-                print(f"Chyba při zpracování dat od {client_address}: {e}")
+                log_print(f"Error processing data from {client_address}: {e}")
                 csv_logger.log_server_event(f"Error processing data from {client_address}: {e}")
                 break
         
         # Cleanup při ukončení spojení
         if client_imei:
+            log_print(f"IMEI {client_imei} disconnected from {client_address}")
             csv_logger.log_server_event(f"IMEI {client_imei} disconnected from {client_address}")
             # Vyčisti buffer pro toto IMEI
             buffer_mgr.clear_buffer(client_imei)
@@ -228,13 +214,13 @@ def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_loggi
     
     log_location = CONFIG_DIR
     if allowed_imeis:
-        print(f"TCP server listening on {host}:{port} with IMEI filter: {allowed_imeis}")
+        log_print(f"TCP server listening on {host}:{port} with IMEI filter: {allowed_imeis}")
         csv_logger.log_server_event(f"Server started with IMEI filter: {allowed_imeis}")
     else:
-        print(f"TCP server listening on {host}:{port} (all IMEIs allowed)")
+        log_print(f"TCP server listening on {host}:{port} (all IMEIs allowed)")
         csv_logger.log_server_event("Server started - all IMEIs allowed")
     
-    print(f"Data saved to: {log_location}")
+    log_print(f"Data saved to: {log_location}")
     csv_logger.log_server_event(f"Data directory: {log_location}")
 
     try:
@@ -244,7 +230,7 @@ def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_loggi
             client_thread.daemon = True
             client_thread.start()
     except KeyboardInterrupt:
-        print("TCP server shutting down...")
+        log_print("TCP server shutting down...")
     finally:
         server.close()
 

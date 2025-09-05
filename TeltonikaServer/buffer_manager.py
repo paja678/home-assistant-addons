@@ -9,14 +9,16 @@ from typing import Optional, List, Tuple
 class BufferManager:
     def __init__(self, base_dir='/share/teltonika'):
         self.base_dir = base_dir
-        self.buffers_dir = os.path.join(base_dir, 'buffers')
+        self.devices_dir = os.path.join(base_dir, 'devices')
         
-        # Vytvoř složku pro buffery
-        os.makedirs(self.buffers_dir, exist_ok=True)
+        # Vytvoř složku pro zařízení
+        os.makedirs(self.devices_dir, exist_ok=True)
     
     def _get_buffer_file(self, imei: str) -> str:
         """Vrátí cestu k buffer souboru pro dané IMEI"""
-        return os.path.join(self.buffers_dir, f'{imei}.buffer')
+        device_dir = os.path.join(self.devices_dir, imei)
+        os.makedirs(device_dir, exist_ok=True)
+        return os.path.join(device_dir, 'buffer.tmp')
     
     def append_data(self, imei: str, data: bytes):
         """Připojí nová data do bufferu pro dané IMEI"""
@@ -132,11 +134,13 @@ class BufferManager:
         """Vrátí seznam všech IMEI s aktivními buffery"""
         imeis = []
         try:
-            if os.path.exists(self.buffers_dir):
-                for filename in os.listdir(self.buffers_dir):
-                    if filename.endswith('.buffer'):
-                        imei = filename[:-7]  # Odstraň .buffer
-                        imeis.append(imei)
+            if os.path.exists(self.devices_dir):
+                for dirname in os.listdir(self.devices_dir):
+                    device_dir = os.path.join(self.devices_dir, dirname)
+                    if os.path.isdir(device_dir):
+                        buffer_file = os.path.join(device_dir, 'buffer.tmp')
+                        if os.path.exists(buffer_file) and os.path.getsize(buffer_file) > 0:
+                            imeis.append(dirname)
         except:
             pass
         return sorted(imeis)

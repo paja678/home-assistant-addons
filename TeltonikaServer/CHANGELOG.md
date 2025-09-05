@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.5.1 🔧 WEB INTERFACE FIX
+
+### 🐛 Bug Fixes
+- **Fixed Tab Navigation**: Opraveny JavaScript chyby v webovém rozhraní
+- **showTab Function**: Vyřešena chyba `showTab is not defined`
+- **Regex Error**: Opravena chyba "Invalid regular expression" v server log zobrazování
+
+### 🔧 Technical Fixes
+- JavaScript `event.target` nahrazeno parametrem `element`
+- Regulární výraz `replace(/\n/g, '<br>')` nahrazen `split('\\n').join('<br>')`
+- Všechny tab odkazy nyní fungují správně
+
+## 1.5.0 🕒 TIMESTAMPED LOGGING
+
+### ✨ New Features
+- **📅 Timestamped Console Logs**: Všechny výpisy v HA addon logu mají časové značky
+- **🔍 Enhanced Debug Info**: Lepší debugging s časovými údaji pro každou událost
+
+### 🔧 Improvements
+- **Consistent Logging**: Unifikované logování s `log_print()` funkcí
+- **Better Error Tracking**: Časové značky pro všechny error messages
+- **HA Addon Visibility**: Jasné časové značky v Home Assistant addon log panelu
+
+### 📊 Log Format
+```
+[2025-09-05 10:30:15] TCP server listening on 0.0.0.0:3030 (all IMEIs allowed)
+[2025-09-05 10:30:16] Teltonika connection from ('192.168.1.100', 45123)
+[2025-09-05 10:30:16] IMEI authenticated: 350317176700155 (KNOWN DEVICE)
+[2025-09-05 10:30:17] Parsed 5 AVL records (codec8_extended) from IMEI 350317176700155
+```
+
 ## 1.4.0 🚀 MAJOR ARCHITECTURE REDESIGN
 
 ### ✨ Revolutionary Features
@@ -28,16 +59,16 @@
 - **Enhanced Error Handling**: Komprehensivní error handling a logování
 - **Per-IMEI Processing**: Separátní buffery a CSV soubory pro každé zařízení
 
-### 📂 New File Structure
+### 📂 Simplified File Structure
 ```
 /share/teltonika/
-├── devices/
-│   └── {imei}/
-│       ├── data.csv      # GPS záznamy
-│       └── info.json     # Device metadata
-├── buffers/
-│   └── {imei}.buffer     # TCP buffery
-└── server.log            # Server události
+├── server.log                # Server události a raw data
+├── imei_registry.json        # IMEI registry a statistiky
+└── devices/
+    └── {imei}/
+        ├── data.csv          # GPS záznamy
+        ├── info.json         # Device metadata
+        └── buffer.tmp        # TCP buffer (dočasný)
 ```
 
 ### 🐛 Major Bug Fixes

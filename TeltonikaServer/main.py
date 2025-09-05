@@ -8,9 +8,15 @@ import argparse
 import threading
 import json
 import os
+from datetime import datetime
 
 from tcp_server import start_tcp_server, ensure_data_dir
 from web_server import start_web_server
+
+def log_print(message):
+    """Print s časovou značkou pro HA addon log"""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] {message}", flush=True)
 
 def load_ha_config():
     """Načte konfiguraci z Home Assistant add-onu"""
@@ -21,7 +27,7 @@ def load_ha_config():
             with open(config_path, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Chyba při čtení konfigurace HA: {e}")
+            log_print(f"Warning: Error reading HA config: {e}")
     return {}
 
 def main():
@@ -55,23 +61,23 @@ def main():
     tcp_thread.daemon = True
     tcp_thread.start()
     
-    print("✅ TCP server started successfully", flush=True)
+    log_print("TCP server started successfully")
     
     # Spusť web server v hlavním threadu
-    print("✅ Starting web server...", flush=True)
+    log_print("Starting web server...")
     try:
         # Použij stejný CONFIG_DIR jako TCP server
         config_dir = '/share/teltonika' if os.path.exists('/data') else './config'
         start_web_server(host='0.0.0.0', port=web_port, base_dir=config_dir)
     except KeyboardInterrupt:
-        print("Shutting down all servers...")
+        log_print("Shutting down all servers...")
 
 if __name__ == "__main__":
     try:
-        print("Starting Teltonika Server...", flush=True)
+        log_print("Starting Teltonika Server...")
         main()
     except Exception as e:
-        print(f"FATAL ERROR in main(): {e}", flush=True)
+        log_print(f"FATAL ERROR in main(): {e}")
         import traceback
         traceback.print_exc()
         exit(1)

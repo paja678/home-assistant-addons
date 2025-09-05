@@ -119,10 +119,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
     <h1>🛰️ Teltonika GPS Server</h1>
     
     <div class="tabs">
-        <div class="tab active" onclick="showTab('overview')">Přehled</div>
-        <div class="tab" onclick="showTab('devices')">Zařízení</div>
-        <div class="tab" onclick="showTab('server-log')">Server Log</div>
-        <div class="tab" onclick="showTab('buffers')">Buffery</div>
+        <div class="tab active" onclick="showTab('overview', this)">Přehled</div>
+        <div class="tab" onclick="showTab('devices', this)">Zařízení</div>
+        <div class="tab" onclick="showTab('server-log', this)">Server Log</div>
+        <div class="tab" onclick="showTab('buffers', this)">Buffery</div>
     </div>
     
     <div id="overview" class="tab-content">
@@ -161,14 +161,14 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         let currentDevice = null;
         let refreshInterval = null;
         
-        function showTab(tabName) {
+        function showTab(tabName, element) {
             // Skryj všechny taby
             document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             
             // Zobraz vybraný tab
             document.getElementById(tabName).style.display = 'block';
-            event.target.classList.add('active');
+            if (element) element.classList.add('active');
             
             // Zastavit automatické obnovování
             if (refreshInterval) {
@@ -292,7 +292,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 const response = await fetch('/api/server_log?limit=100');
                 const text = await response.text();
                 
-                document.getElementById('server-log-content').innerHTML = text.replace(/\n/g, '<br>');
+                document.getElementById('server-log-content').innerHTML = text.split('\\n').join('<br>');
                 
                 // Scroll na konec
                 const container = document.getElementById('server-log-content');

@@ -1,0 +1,16 @@
+{
+  "350317176700155": {
+    "first_seen": "2025-09-05T10:26:22.297510",
+    "last_seen": "2025-09-05T10:34:12.862652",
+    "total_connections": 6,
+    "total_records": 3,
+    "ip_addresses": [
+      "127.0.0.1"
+    ],
+    "last_ip": "127.0.0.1",
+    "device_info": {
+      "model": "unknown",
+      "firmware": "unknown"
+    }
+  }
+}
