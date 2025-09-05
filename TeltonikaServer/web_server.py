@@ -325,7 +325,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
 </body>
 </html>"""
         
-        # Nahradíme $$ za $ v JavaScript template literals
+        # Nahradíme $$ za $ v JavaScript template literals (jen pro HTML)
         html = html.replace('$${', '${')
         self._send_response(200, html, 'text/html')
 
