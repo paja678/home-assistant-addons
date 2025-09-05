@@ -53,7 +53,22 @@ def parse_avl_record(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
     
     # Timestamp (8 bytes) - Unix timestamp v ms
     timestamp_ms = struct.unpack('>Q', data[offset:offset+8])[0]
-    record['timestamp'] = datetime.fromtimestamp(timestamp_ms / 1000.0)
+    try:
+        # Teltonika timestamp je Unix timestamp v milisekundách od 1.1.1970
+        # Validace rozsahu: roky 2000-2100 (946684800000 - 4102444800000 ms)
+        if 946684800000 <= timestamp_ms <= 4102444800000:
+            record['timestamp'] = datetime.fromtimestamp(timestamp_ms / 1000.0)
+        else:
+            # Neplatný timestamp - použij současný čas
+            from datetime import datetime as dt
+            ts = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"[{ts}] Invalid timestamp {timestamp_ms}, using current time", flush=True)
+            record['timestamp'] = datetime.now()
+    except (ValueError, OSError) as e:
+        from datetime import datetime as dt
+        ts = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts}] Error parsing timestamp {timestamp_ms}: {e}, using current time", flush=True)
+        record['timestamp'] = datetime.now()
     offset += 8
     
     # Priority (1 byte)
@@ -188,7 +203,9 @@ def parse_avl_packet_with_length(data: bytes) -> Tuple[Optional[List[Dict[str, A
                 else:
                     break
             except Exception as e:
-                print(f"Error parsing record {i}: {e}")
+                from datetime import datetime as dt
+                ts = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"[{ts}] Error parsing record {i}: {e}", flush=True)
                 break
         
         return records, len(records), codec_type, total_packet_length

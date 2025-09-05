@@ -33,17 +33,14 @@ def ensure_data_dir():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
     except Exception as e:
-        print(f"❌ Failed to create data directory: {e}")
+        log_print(f"Failed to create data directory: {e}")
     
-    if log_to_config:
-        config_log_dir = os.path.join(CONFIG_DIR, 'teltonika_logs')
-        try:
-            os.makedirs(config_log_dir, exist_ok=True)
-            print(f"✅ Persistent logging: {config_log_dir}")
-        except Exception as e:
-            print(f"❌ Failed to create persistent log directory: {e}")
-    else:
-        print("✅ Standard logging: /data/")
+    # Vytvoř hlavní teltonika složku
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        log_print(f"Data directory ready: {CONFIG_DIR}")
+    except Exception as e:
+        log_print(f"Failed to create config directory: {e}")
 
 def get_imei_registry():
     """Vrátí IMEI registry instanci"""
@@ -194,8 +191,12 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
         if client_imei:
             log_print(f"IMEI {client_imei} disconnected from {client_address}")
             csv_logger.log_server_event(f"IMEI {client_imei} disconnected from {client_address}")
-            # Vyčisti buffer pro toto IMEI
-            buffer_mgr.clear_buffer(client_imei)
+            # Nevyčišťuj buffer - může obsahovat neúplný packet čekající na další data
+            # Buffer se vyčistí automaticky při úspěšném zpracování nebo při překročení velikosti
+            buffer_size = buffer_mgr.get_buffer_size(client_imei)
+            if buffer_size > 0:
+                log_print(f"Buffer pro IMEI {client_imei} obsahuje {buffer_size} bytů nedokončených dat")
+                csv_logger.log_server_event(f"Buffer contains {buffer_size} bytes of incomplete data for IMEI {client_imei}")
 
 def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_logging=False):
     """Spustí TCP server pro příjem dat od Teltonika zařízení"""

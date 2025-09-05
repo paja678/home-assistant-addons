@@ -1,9 +1,51 @@
 {
   "350317176700155": {
     "first_seen": "2025-09-05T10:26:22.297510",
-    "last_seen": "2025-09-05T10:34:12.862652",
-    "total_connections": 6,
-    "total_records": 3,
+    "last_seen": "2025-09-05T10:53:14.665648",
+    "total_connections": 11,
+    "total_records": 6,
+    "ip_addresses": [
+      "127.0.0.1"
+    ],
+    "last_ip": "127.0.0.1",
+    "device_info": {
+      "model": "unknown",
+      "firmware": "unknown"
+    }
+  },
+  "356307042441013": {
+    "first_seen": "2025-09-05T11:05:25.067719",
+    "last_seen": "2025-09-05T11:05:25.068333",
+    "total_connections": 1,
+    "total_records": 1,
+    "ip_addresses": [
+      "127.0.0.1"
+    ],
+    "last_ip": "127.0.0.1",
+    "device_info": {
+      "model": "unknown",
+      "firmware": "unknown"
+    }
+  },
+  "356307042441014": {
+    "first_seen": "2025-09-05T11:05:27.074647",
+    "last_seen": "2025-09-05T11:05:27.075553",
+    "total_connections": 1,
+    "total_records": 1,
+    "ip_addresses": [
+      "127.0.0.1"
+    ],
+    "last_ip": "127.0.0.1",
+    "device_info": {
+      "model": "unknown",
+      "firmware": "unknown"
+    }
+  },
+  "356307042441015": {
+    "first_seen": "2025-09-05T11:05:29.084845",
+    "last_seen": "2025-09-05T11:05:29.087712",
+    "total_connections": 1,
+    "total_records": 1,
     "ip_addresses": [
       "127.0.0.1"
     ],

@@ -32,8 +32,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
             elif path == '/api/server_log':
                 limit = int(parse_qs(parsed_url.query).get('limit', [2000])[0])
                 self._serve_server_log_api(limit)
-            elif path == '/api/buffer_status':
-                self._serve_buffer_status_api()
+            elif path == '/api/download_csv':
+                query = parse_qs(parsed_url.query)
+                imei = query.get('imei', [None])[0]
+                self._serve_csv_download(imei)
             else:
                 self._serve_404()
         except Exception as e:
@@ -62,7 +64,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         .tab-content { 
             border: 1px solid #ccc; 
             padding: 20px; 
-            min-height: 500px;
             border-radius: 0 5px 5px 5px;
         }
         .device-list { margin-bottom: 20px; }
@@ -89,8 +90,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         }
         th { background-color: #f2f2f2; position: sticky; top: 0; }
         .log-container { 
-            max-height: 400px; 
-            overflow-y: auto; 
             font-family: monospace; 
             background: #f5f5f5; 
             padding: 10px;
@@ -104,6 +103,21 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
             border-radius: 5px; 
             cursor: pointer;
             margin-bottom: 20px;
+        }
+        .download-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .download-btn:hover {
+            background: #218838;
+            color: white;
+            text-decoration: none;
         }
         .status-info { 
             background: #e8f4fd; 
@@ -122,7 +136,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         <div class="tab active" onclick="showTab('overview', this)">Přehled</div>
         <div class="tab" onclick="showTab('devices', this)">Zařízení</div>
         <div class="tab" onclick="showTab('server-log', this)">Server Log</div>
-        <div class="tab" onclick="showTab('buffers', this)">Buffery</div>
     </div>
     
     <div id="overview" class="tab-content">
@@ -131,14 +144,12 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
             <p><strong>Server:</strong> Běží a přijímá data od Teltonika zařízení</p>
             <p><strong>Protokol:</strong> AVL Codec8/8E s IMEI autentifikací</p>
             <p><strong>Úložiště:</strong> CSV soubory pro každé zařízení + server log</p>
-            <p><strong>Poslední aktualizace:</strong> <span id="last-update">Načítá se...</span></p>
         </div>
         <div id="devices-overview"></div>
     </div>
     
     <div id="devices" class="tab-content" style="display: none;">
         <h2>GPS Data zařízení</h2>
-        <button class="refresh-btn" onclick="loadDevices()">🔄 Obnovit</button>
         <div class="device-list" id="device-list"></div>
         <div id="device-data">
             <p>Vyberte zařízení pro zobrazení GPS dat...</p>
@@ -147,15 +158,9 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
     
     <div id="server-log" class="tab-content" style="display: none;">
         <h2>Server Log</h2>
-        <button class="refresh-btn" onclick="loadServerLog()">🔄 Obnovit</button>
         <div class="log-container" id="server-log-content">Načítá se...</div>
     </div>
     
-    <div id="buffers" class="tab-content" style="display: none;">
-        <h2>TCP Buffer Status</h2>
-        <button class="refresh-btn" onclick="loadBufferStatus()">🔄 Obnovit</button>
-        <div id="buffer-status">Načítá se...</div>
-    </div>
 
     <script>
         let currentDevice = null;
@@ -185,10 +190,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 loadServerLog();
                 // Automatické obnovování server logu
                 refreshInterval = setInterval(loadServerLog, 5000);
-            } else if (tabName === 'buffers') {
-                loadBufferStatus();
-                // Automatické obnovování buffer statusu
-                refreshInterval = setInterval(loadBufferStatus, 10000);
             }
         }
         
@@ -214,7 +215,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 }
                 
                 document.getElementById('devices-overview').innerHTML = html;
-                document.getElementById('last-update').textContent = new Date().toLocaleString();
             } catch (error) {
                 document.getElementById('devices-overview').innerHTML = '<p>Chyba při načítání: ' + error + '</p>';
             }
@@ -262,7 +262,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                     return;
                 }
                 
-                let html = `<h3>GPS Data pro zařízení ${imei} (posledních ${records.length} záznamů)</h3>`;
+                let html = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3>GPS Data pro zařízení ${imei} (posledních ${records.length} záznamů)</h3>
+                    <a href="/api/download_csv?imei=${imei}" class="download-btn">📥 Stáhnout CSV</a>
+                </div>`;
                 html += '<table><tr>';
                 html += '<th>Čas</th><th>Souřadnice</th><th>Rychlost</th><th>Výška</th><th>Satelity</th><th>Směr</th><th>I/O Data</th>';
                 html += '</tr>';
@@ -302,33 +305,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
             }
         }
         
-        async function loadBufferStatus() {
-            try {
-                const response = await fetch('/api/buffer_status');
-                const buffers = await response.json();
-                
-                let html = '<h3>Status TCP Bufferů</h3>';
-                if (buffers.length === 0) {
-                    html += '<p>✅ Žádné aktivní buffery - všechna data byla zpracována.</p>';
-                } else {
-                    html += '<table><tr><th>IMEI</th><th>Velikost bufferu</th><th>Status</th></tr>';
-                    buffers.forEach(buffer => {
-                        const sizeKB = (buffer.size / 1024).toFixed(1);
-                        const status = buffer.size > 10240 ? '⚠️ Velký buffer' : '✅ OK';
-                        html += `<tr>
-                            <td>${buffer.imei}</td>
-                            <td>${sizeKB} KB</td>
-                            <td>${status}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                }
-                
-                document.getElementById('buffer-status').innerHTML = html;
-            } catch (error) {
-                document.getElementById('buffer-status').innerHTML = '<p>Chyba při načítání buffer statusu: ' + error + '</p>';
-            }
-        }
         
         // Načti přehled při načtení stránky
         window.onload = function() {
@@ -378,24 +354,42 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         except Exception as e:
             self._send_response(500, f"Error: {e}", 'text/plain')
 
-    def _serve_buffer_status_api(self):
-        """API endpoint pro status bufferů"""
+    def _serve_csv_download(self, imei):
+        """API endpoint pro stažení CSV souboru zařízení"""
+        if not imei:
+            self._send_response(400, "Missing IMEI parameter", 'text/plain')
+            return
+            
         try:
-            buffer_mgr = BufferManager(self.base_dir)
-            imeis = buffer_mgr.get_all_buffered_imeis()
+            import os
+            from datetime import datetime
             
-            buffers = []
-            for imei in imeis:
-                size = buffer_mgr.get_buffer_size(imei)
-                if size > 0:  # Pouze aktivní buffery
-                    buffers.append({
-                        "imei": imei,
-                        "size": size
-                    })
+            # Cesta k CSV souboru
+            csv_file = os.path.join(self.base_dir, 'devices', imei, 'data.csv')
             
-            self._send_json_response(buffers)
+            if not os.path.exists(csv_file):
+                self._send_response(404, f"CSV file not found for IMEI {imei}", 'text/plain')
+                return
+            
+            # Načti CSV content
+            with open(csv_file, 'r', encoding='utf-8') as f:
+                csv_content = f.read()
+            
+            # Generuj filename s datem
+            today = datetime.now().strftime('%Y-%m-%d')
+            filename = f"teltonika_{imei}_{today}.csv"
+            
+            # Pošli jako stažený soubor
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv; charset=utf-8')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(csv_content.encode('utf-8'))
+            
         except Exception as e:
-            self._send_json_response({"error": str(e)}, status=500)
+            self._send_response(500, f"Error downloading CSV: {e}", 'text/plain')
+
 
     def _send_response(self, status_code, content, content_type):
         """Pošle HTTP odpověď"""

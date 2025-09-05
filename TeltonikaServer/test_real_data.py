@@ -112,7 +112,7 @@ def send_real_teltonika_data(host="192.168.1.16", port=3030):
         print("🔌 Connection closed")
 
 def test_simple_packet(host="192.168.1.16", port=3030):
-    """Test s jednoduchým packetem pro ověření základní funkcionality"""
+    """Test s jednoduchým packetem s reálným timestampem"""
     
     print(f"\n🔧 Simple packet test")
     print(f"Target: {host}:{port}")
@@ -129,11 +129,60 @@ def test_simple_packet(host="192.168.1.16", port=3030):
         if response == b'\x01':
             print("✅ IMEI OK")
             
-            # Simple single-record packet (from your log)
-            simple_hex = "00000000000000140801000197C9BF35A800000000000000000000000000000000001300EF01F001150C80004502017158B50042000016CD00CE4050430F60440011FFF712000013000001"
+            # Vytvoř packet s reálným timestampem
+            current_time_ms = int(time.time() * 1000)
+            print(f"Using timestamp: {current_time_ms} ({datetime.fromtimestamp(current_time_ms/1000)})")
             
-            print(f"Sending simple packet ({len(bytes.fromhex(simple_hex))} bytes)")
-            client.send(bytes.fromhex(simple_hex))
+            # Build simple AVL packet
+            packet = bytearray()
+            packet.extend(b'\x00\x00\x00\x00')  # Preamble
+            
+            # Data part (will be filled)
+            data_start = len(packet)
+            packet.extend(b'\x00\x00\x00\x00')  # Data length placeholder
+            
+            packet.append(0x08)  # Codec 8
+            packet.append(0x01)  # 1 record
+            
+            # AVL Record
+            packet.extend(struct.pack('>Q', current_time_ms))  # Timestamp
+            packet.append(0x01)  # Priority
+            packet.extend(struct.pack('>i', 491520000))  # Longitude (49.1520000 * 10^7) 
+            packet.extend(struct.pack('>i', 164230000))  # Latitude (16.4230000 * 10^7)
+            packet.extend(struct.pack('>H', 142))        # Altitude
+            packet.extend(struct.pack('>H', 90))         # Angle  
+            packet.append(8)                             # Satellites
+            packet.extend(struct.pack('>H', 60))         # Speed km/h
+            
+            # I/O data
+            packet.append(0x01)  # Event IO ID
+            packet.append(0x02)  # Total IO elements
+            
+            # 1-byte values
+            packet.append(0x01)  # Count
+            packet.append(0x15)  # GSM signal
+            packet.append(0x04)  # Value
+            
+            # 2-byte values
+            packet.append(0x01)  # Count  
+            packet.append(0x42)  # External voltage
+            packet.extend(struct.pack('>H', 12500))  # 12.5V
+            
+            # No 4-byte and 8-byte values
+            packet.append(0x00)
+            packet.append(0x00)
+            
+            packet.append(0x01)  # Record count at end
+            
+            # CRC (simplified)
+            packet.extend(b'\x00\x00\x00\x00')
+            
+            # Update data length
+            data_length = len(packet) - data_start - 8  # Exclude preamble, length, and CRC
+            packet[data_start:data_start+4] = struct.pack('>I', data_length)
+            
+            print(f"Sending realistic packet ({len(packet)} bytes)")
+            client.send(packet)
             
             ack = client.recv(4)
             if len(ack) == 4:

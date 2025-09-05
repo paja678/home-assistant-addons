@@ -1,0 +1,2 @@
+timestamp,latitude,longitude,speed,altitude,satellites,angle,io_data
+2025-09-05 11:05:29,48.974400,14.474400,60,200,8,90,"gsm_signal=5,ignition=1,battery=12.8V"
