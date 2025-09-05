@@ -66,8 +66,11 @@ def main():
     # Spusť web server v hlavním threadu
     log_print("Starting web server...")
     try:
-        # Použij stejný CONFIG_DIR jako TCP server
-        config_dir = '/share/teltonika' if os.path.exists('/data') else './config'
+        # Použij stejný CONFIG_DIR jako TCP server - musí být synchronizováno!
+        # V HA addon prostředí se používá /share/teltonika
+        config_dir = '/share/teltonika' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './config'
+        log_print(f"Using config directory: {config_dir}")
+        log_print(f"Config dir exists: {os.path.exists(config_dir)}")
         start_web_server(host='0.0.0.0', port=web_port, base_dir=config_dir)
     except KeyboardInterrupt:
         log_print("Shutting down all servers...")
