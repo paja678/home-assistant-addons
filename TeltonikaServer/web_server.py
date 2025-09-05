@@ -17,27 +17,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         path = parsed_url.path
         
-        # Debug logging
-        print(f"[DEBUG] Web server request: {self.path} from {self.client_address[0]}")
-        print(f"[DEBUG] Parsed path: {path}")
-        print(f"[DEBUG] Base dir: {getattr(self, 'base_dir', 'NOT SET')}")
-        
-        # Ingress detection and debugging
-        headers = dict(self.headers)
-        print(f"[DEBUG] All request headers: {headers}")
-        
-        # Check for Ingress-specific headers
-        ingress_headers = ['x-ingress-path', 'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host']
-        is_ingress = False
-        for header in ingress_headers:
-            if header in headers:
-                print(f"[DEBUG] Ingress header found: {header} = {headers[header]}")
-                is_ingress = True
-        
-        if is_ingress:
-            print(f"[DEBUG] INGRESS DETECTED - Request likely from Home Assistant Ingress")
-        else:
-            print(f"[DEBUG] DIRECT ACCESS - Request likely from direct IP access")
         
         try:
             if path == '/' or path == '/index.html':
@@ -57,10 +36,9 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 imei = query.get('imei', [None])[0]
                 self._serve_csv_download(imei)
             else:
-                print(f"[DEBUG] 404 - Path not found: {path}")
                 self._serve_404()
         except Exception as e:
-            print(f"[ERROR] Web server error in {path}: {e}")
+            pass
             import traceback
             traceback.print_exc()
             self._serve_error(str(e))
@@ -172,10 +150,10 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
     </div>
     
     <div id="devices" class="tab-content" style="display: none;">
-        <h2>GPS Data zařízení</h2>
+        <h2>RAW Data zařízení</h2>
         <div class="device-list" id="device-list"></div>
         <div id="device-data">
-            <p>Vyberte zařízení pro zobrazení GPS dat...</p>
+            <p>Vyberte zařízení pro zobrazení RAW dat...</p>
         </div>
     </div>
     
@@ -186,13 +164,11 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
     
 
     <script>
-        console.log('Script starting...');
         
         let currentDevice = null;
         let refreshInterval = null;
         
         function showTab(tabName, element) {
-            console.log('showTab called with:', tabName, element);
             // Skryj všechny taby
             document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -220,19 +196,14 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         }
         
         async function loadOverview() {
-            console.log('loadOverview called');
             try {
-                console.log('Fetching devices from api/devices');
                 const response = await fetch('api/devices');
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const responseText = await response.text();
-                console.log('Raw response:', responseText);
                 
                 const devices = JSON.parse(responseText);
                 
@@ -254,7 +225,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 
                 document.getElementById('devices-overview').innerHTML = html;
             } catch (error) {
-                console.error('Error in loadOverview:', error);
                 let errorMsg = 'Unknown error';
                 if (error.message) {
                     errorMsg = error.message;
@@ -266,18 +236,14 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         }
         
         async function loadDevices() {
-            console.log('loadDevices called');
             try {
-                console.log('Fetching devices from api/devices');
                 const response = await fetch('api/devices');
-                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const responseText = await response.text();
-                console.log('Raw response:', responseText.substring(0, 200) + '...');
                 
                 const devices = JSON.parse(responseText);
                 
@@ -298,7 +264,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                     loadDeviceData(currentDevice);
                 }
             } catch (error) {
-                console.error('Error in loadDevices:', error);
                 let errorMsg = 'Unknown error';
                 if (error.message) {
                     errorMsg = error.message;
@@ -316,52 +281,41 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         }
         
         async function loadDeviceData(imei) {
-            console.log('loadDeviceData called for IMEI:', imei);
             try {
                 const url = `api/device_data?imei=${imei}&limit=100`;
-                console.log('Fetching device data from:', url);
                 const response = await fetch(url);
-                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const responseText = await response.text();
-                console.log('Raw response length:', responseText.length);
                 
                 const records = JSON.parse(responseText);
                 
                 if (records.length === 0) {
-                    document.getElementById('device-data').innerHTML = '<p>Žádná GPS data pro toto zařízení.</p>';
+                    document.getElementById('device-data').innerHTML = '<p>Žádná RAW data pro toto zařízení.</p>';
                     return;
                 }
                 
                 let html = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3>GPS Data pro zařízení $${imei} (posledních $${records.length} záznamů)</h3>
+                    <h3>RAW Data pro zařízení $${imei} (posledních $${records.length} záznamů)</h3>
                     <a href="api/download_csv?imei=$${imei}" class="download-btn">📥 Stáhnout CSV</a>
                 </div>`;
                 html += '<table><tr>';
-                html += '<th>Čas</th><th>Souřadnice</th><th>Rychlost</th><th>Výška</th><th>Satelity</th><th>Směr</th><th>I/O Data</th>';
+                html += '<th>Čas</th><th>RAW Data</th>';
                 html += '</tr>';
                 
                 records.forEach(record => {
-                    const coords = `$${parseFloat(record.latitude).toFixed(6)}, $${parseFloat(record.longitude).toFixed(6)}`;
                     html += `<tr>
                         <td>$${record.timestamp}</td>
-                        <td class="coordinates">$${coords}</td>
-                        <td class="speed">$${record.speed} km/h</td>
-                        <td>$${record.altitude} m</td>
-                        <td>$${record.satellites}</td>
-                        <td>$${record.angle}°</td>
-                        <td><small>$${record.io_data}</small></td>
+                        <td style="font-family: monospace; font-size: 11px; word-break: break-all;">$${record.raw_data}</td>
                     </tr>`;
                 });
                 
                 html += '</table>';
                 document.getElementById('device-data').innerHTML = html;
             } catch (error) {
-                console.error('Error in loadDeviceData:', error);
                 let errorMsg = 'Unknown error';
                 if (error.message) {
                     errorMsg = error.message;
@@ -373,18 +327,14 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         }
         
         async function loadServerLog() {
-            console.log('loadServerLog called');
             try {
-                console.log('Fetching server log from api/server_log');
                 const response = await fetch('api/server_log?limit=100');
-                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const text = await response.text();
-                console.log('Server log response length:', text.length);
                 
                 document.getElementById('server-log-content').innerHTML = text.replace(/\\n/g, '<br>');
                 
@@ -392,7 +342,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 const container = document.getElementById('server-log-content');
                 container.scrollTop = container.scrollHeight;
             } catch (error) {
-                console.error('Error in loadServerLog:', error);
                 let errorMsg = 'Unknown error';
                 if (error.message) {
                     errorMsg = error.message;
@@ -406,7 +355,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         
         // Načti přehled při načtení stránky
         window.onload = function() {
-            console.log('Page loaded, calling loadOverview...');
             loadOverview();
         };
         
@@ -416,8 +364,6 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
                 clearInterval(refreshInterval);
             }
         };
-        
-        console.log('Script completed. showTab function:', typeof showTab);
     </script>
 </body>
 </html>"""
@@ -428,64 +374,50 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
 
     def _serve_devices_api(self):
         """API endpoint pro seznam zařízení"""
-        print(f"[DEBUG] _serve_devices_api called with base_dir: {self.base_dir}")
         try:
             # Ověř, že base_dir existuje
             if not os.path.exists(self.base_dir):
-                print(f"[ERROR] Base directory does not exist: {self.base_dir}")
                 self._send_json_response({"error": f"Base directory not found: {self.base_dir}"}, status=500)
                 return
                 
             csv_logger = CSVLogger(self.base_dir)
             devices = csv_logger.get_all_devices()
-            print(f"[DEBUG] Found {len(devices)} devices")
             self._send_json_response(devices)
         except Exception as e:
-            print(f"[ERROR] Error in _serve_devices_api: {e}")
             import traceback
             traceback.print_exc()
             self._send_json_response({"error": f"API Error: {str(e)}"}, status=500)
 
     def _serve_device_data_api(self, imei, limit):
         """API endpoint pro data konkrétního zařízení"""
-        print(f"[DEBUG] _serve_device_data_api called: imei={imei}, limit={limit}")
         if not imei:
-            print(f"[ERROR] Missing IMEI parameter")
             self._send_json_response({"error": "IMEI parameter required"}, status=400)
             return
         
-        
         try:
             if not os.path.exists(self.base_dir):
-                print(f"[ERROR] Base directory does not exist: {self.base_dir}")
                 self._send_json_response({"error": f"Base directory not found: {self.base_dir}"}, status=500)
                 return
                 
             csv_logger = CSVLogger(self.base_dir)
             records = csv_logger.read_last_records(imei, limit)
-            print(f"[DEBUG] Found {len(records)} records for IMEI {imei}")
             self._send_json_response(records)
         except Exception as e:
-            print(f"[ERROR] Error in _serve_device_data_api: {e}")
             import traceback
             traceback.print_exc()
             self._send_json_response({"error": f"API Error: {str(e)}"}, status=500)
 
     def _serve_server_log_api(self, limit):
         """API endpoint pro server log"""
-        print(f"[DEBUG] _serve_server_log_api called: limit={limit}")
         try:
             if not os.path.exists(self.base_dir):
-                print(f"[ERROR] Base directory does not exist: {self.base_dir}")
                 self._send_response(500, f"Base directory not found: {self.base_dir}", 'text/plain')
                 return
                 
             csv_logger = CSVLogger(self.base_dir)
             log_content = csv_logger.get_server_log_tail(limit)
-            print(f"[DEBUG] Retrieved log content, length: {len(log_content)}")
             self._send_response(200, log_content, 'text/plain')
         except Exception as e:
-            print(f"[ERROR] Error in _serve_server_log_api: {e}")
             import traceback
             traceback.print_exc()
             self._send_response(500, f"Server log API Error: {e}", 'text/plain')
@@ -560,14 +492,8 @@ def start_web_server(host='0.0.0.0', port=3031, base_dir=None):
     if base_dir is None:
         base_dir = '/share/teltonika' if os.path.exists('/data') or os.environ.get('HA_ADDON') else './config'
     
-    print(f"[DEBUG] Starting web server with base_dir: {base_dir}")
-    print(f"[DEBUG] Base dir exists: {os.path.exists(base_dir)}")
-    print(f"[DEBUG] /data exists: {os.path.exists('/data')}")
-    print(f"[DEBUG] HA_ADDON env var: {os.environ.get('HA_ADDON', 'Not set')}")
-    
     # Vytvoř base_dir pokud neexistuje
     if not os.path.exists(base_dir):
-        print(f"[DEBUG] Creating base directory: {base_dir}")
         os.makedirs(base_dir, exist_ok=True)
     
     # Vytvoříme handler s nastaveným base_dir
@@ -577,8 +503,8 @@ def start_web_server(host='0.0.0.0', port=3031, base_dir=None):
             super().__init__(*args, **kwargs)
     
     server = HTTPServer((host, port), ConfiguredHandler)
-    print(f"[INFO] Web server listening on http://{host}:{port}")
-    print(f"[INFO] Using base directory: {base_dir}")
+    print(f"Web server listening on http://{host}:{port}")
+    print(f"Using base directory: {base_dir}")
     
     try:
         server.serve_forever()

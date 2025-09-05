@@ -81,7 +81,6 @@ def get_all_log_files():
 
 def handle_client(client_socket, client_address, allowed_imeis=None):
     """Zpracuje komunikaci s jednotlivým klientem podle Teltonika AVL protokolu"""
-    log_print(f"Teltonika connection from {client_address}")
     client_imei = None
     csv_logger = get_csv_logger()
     buffer_mgr = get_buffer_manager()
@@ -95,13 +94,12 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                 if not data:
                     break
                 
-                # Log raw data pro debugging  
+                # Log raw data
                 hex_data = binascii.hexlify(data).decode('utf-8').upper()
-                log_print(f"Raw data from {client_address}: {hex_data[:100]}{'...' if len(hex_data) > 100 else ''}")
                 
-                # Pokud máme IMEI, log raw data
+                # Pokud máme IMEI, uložit raw data
                 if client_imei:
-                    csv_logger.log_raw_data(client_address, client_imei, hex_data)
+                    csv_logger.log_raw_record(client_imei, hex_data)
 
                 # Pokud ještě nemáme IMEI, pokus se ho parsovat
                 if client_imei is None:
@@ -113,14 +111,11 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         # Zkontroluj, zda je IMEI povoleno
                         registry = get_imei_registry()
                         if not registry.is_imei_allowed(client_imei, allowed_imeis or []):
-                            log_print(f"IMEI {client_imei} not in allowed list - connection refused")
                             client_socket.sendall(b"\x00")  # Reject
                             break
                         
                         # Zaregistruj IMEI v registru
                         is_new_device = registry.register_imei_connection(client_imei, client_ip)
-                        
-                        log_print(f"IMEI authenticated: {client_imei} {'(NEW DEVICE)' if is_new_device else ''}")
                         
                         # Odpověz na IMEI handshake - 0x01 = accept
                         client_socket.sendall(b"\x01")
@@ -135,68 +130,28 @@ def handle_client(client_socket, client_address, allowed_imeis=None):
                         
                         continue
                     else:
-                        log_print(f"Invalid IMEI handshake from {client_address}")
                         csv_logger.log_server_event(f"Invalid IMEI handshake from {client_address}")
                         client_socket.sendall(b"\x00")  # Reject
                         break
 
-                # Pokud máme IMEI, zpracuj AVL data pomocí buffer manageru
+                # Pokud máme IMEI, zpracuj data jednodušeji 
                 if client_imei:
-                    # Přidej data do bufferu
+                    # Přidej data do bufferu (zachováváme buffer logiku)
                     buffer_mgr.append_data(client_imei, data)
                     
-                    # Získej kompletní packety
-                    complete_packets, remaining = buffer_mgr.get_complete_packets(client_imei)
-                    
-                    total_records = 0
-                    
-                    for packet in complete_packets:
-                        records, record_count, codec_type, packet_length = parse_avl_packet_with_length(packet)
-                        
-                        if records and record_count > 0:
-                            log_print(f"Parsed {record_count} AVL records ({codec_type}) from IMEI {client_imei}")
-                            
-                            # Zaregistruj záznamy v IMEI registru
-                            registry = get_imei_registry()
-                            registry.register_avl_records(client_imei, record_count)
-                            
-                            # Zaloguj GPS záznamy do CSV
-                            for record in records:
-                                csv_logger.log_gps_record(client_imei, record)
-                            
-                            total_records += record_count
-                        else:
-                            log_print(f"Failed to parse AVL packet from IMEI {client_imei}")
-                            csv_logger.log_server_event(f"Failed to parse AVL packet from IMEI {client_imei}")
-                    
-                    if total_records > 0:
-                        # Odpověz s celkovým počtem zpracovaných záznamů
-                        response = total_records.to_bytes(4, 'big')
-                        client_socket.sendall(response)
-                        log_print(f"Sent ACK for {total_records} total records")
-                        csv_logger.log_server_event(f"Processed {total_records} GPS records from IMEI {client_imei}")
-                    else:
-                        # Odpověz s 0 záznamy
-                        client_socket.sendall(b"\x00\x00\x00\x00")
+                    # Jednoduchá odpověď - ACK pro přijaté údaje
+                    client_socket.sendall(b"\x00\x00\x00\x01")  # ACK pro 1 packet
                 else:
                     # Nemáme ještě IMEI - čekáme na handshake
                     pass
                     
             except Exception as e:
-                log_print(f"Error processing data from {client_address}: {e}")
                 csv_logger.log_server_event(f"Error processing data from {client_address}: {e}")
                 break
         
         # Cleanup při ukončení spojení
         if client_imei:
-            log_print(f"IMEI {client_imei} disconnected from {client_address}")
             csv_logger.log_server_event(f"IMEI {client_imei} disconnected from {client_address}")
-            # Nevyčišťuj buffer - může obsahovat neúplný packet čekající na další data
-            # Buffer se vyčistí automaticky při úspěšném zpracování nebo při překročení velikosti
-            buffer_size = buffer_mgr.get_buffer_size(client_imei)
-            if buffer_size > 0:
-                log_print(f"Buffer pro IMEI {client_imei} obsahuje {buffer_size} bytů nedokončených dat")
-                csv_logger.log_server_event(f"Buffer contains {buffer_size} bytes of incomplete data for IMEI {client_imei}")
 
 def start_tcp_server(host='0.0.0.0', port=3030, allowed_imeis=None, config_logging=False):
     """Spustí TCP server pro příjem dat od Teltonika zařízení"""

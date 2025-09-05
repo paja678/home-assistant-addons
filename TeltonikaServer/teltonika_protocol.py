@@ -32,7 +32,10 @@ def parse_imei(data: bytes) -> Optional[str]:
         return None
 
 def calculate_crc16(data: bytes) -> int:
-    """Vypočítá CRC16 pro AVL packet"""
+    """
+    Vypočítá CRC16 pro AVL packet podle Teltonika specifikace
+    Polynomial: 0x1021 (CRC-CCITT)
+    """
     crc = 0
     for byte in data:
         crc ^= byte << 8
@@ -44,9 +47,52 @@ def calculate_crc16(data: bytes) -> int:
             crc &= 0xFFFF
     return crc
 
-def parse_avl_record(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
+def validate_avl_packet_crc(data: bytes) -> bool:
     """
-    Parsuje jednotlivý AVL record
+    Validuje CRC AVL packetu
+    Packet struktura: [Preamble 4B][Data Length 4B][Data][CRC 4B]
+    CRC počítá pouze nad Data částí
+    """
+    try:
+        if len(data) < 12:  # Minimum: preamble + length + CRC
+            return False
+            
+        # Data length z offsetu 4-8
+        data_length = struct.unpack('>I', data[4:8])[0]
+        
+        # Kontrola zda máme dostatek dat
+        expected_total = 8 + data_length + 4  # preamble + length + data + crc
+        if len(data) < expected_total:
+            return False
+            
+        # Data část (bez preamble, length a CRC)
+        data_part = data[8:8+data_length]
+        
+        # CRC z konce packetu (4 bytes)
+        packet_crc = struct.unpack('>I', data[8+data_length:8+data_length+4])[0]
+        
+        # Vypočítej CRC pro data část
+        calculated_crc = calculate_crc16(data_part)
+        
+        return calculated_crc == packet_crc
+        
+    except Exception as e:
+        print(f"CRC validation error: {e}")
+        return False
+
+def parse_avl_record(data: bytes, offset: int, codec_id: int = 0x08) -> Tuple[Dict[str, Any], int]:
+    """
+    Parsuje jednotlivý AVL record pro Codec8 nebo Codec8E
+    Returns: (record_dict, new_offset)
+    """
+    if codec_id == 0x8E:
+        return parse_avl_record_codec8e(data, offset)
+    else:
+        return parse_avl_record_codec8(data, offset)
+
+def parse_avl_record_codec8(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
+    """
+    Parsuje jednotlivý AVL record pro Codec8 (0x08)
     Returns: (record_dict, new_offset)
     """
     record = {}
@@ -148,6 +194,175 @@ def parse_avl_record(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
     
     return record, offset
 
+def parse_avl_record_codec8e(data: bytes, offset: int) -> Tuple[Dict[str, Any], int]:
+    """
+    Parsuje jednotlivý AVL record pro Codec8 Extended (0x8E)
+    Returns: (record_dict, new_offset)
+    """
+    record = {}
+    
+    # Timestamp (8 bytes) - Unix timestamp v ms
+    timestamp_ms = struct.unpack('>Q', data[offset:offset+8])[0]
+    try:
+        # Teltonika timestamp je Unix timestamp v milisekundách od 1.1.1970
+        # Validace rozsahu: roky 2000-2100 (946684800000 - 4102444800000 ms)
+        if 946684800000 <= timestamp_ms <= 4102444800000:
+            record['timestamp'] = datetime.fromtimestamp(timestamp_ms / 1000.0)
+        else:
+            # Neplatný timestamp - použij současný čas
+            from datetime import datetime as dt
+            ts = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"[{ts}] Invalid timestamp {timestamp_ms}, using current time", flush=True)
+            record['timestamp'] = datetime.now()
+    except (ValueError, OSError) as e:
+        from datetime import datetime as dt
+        ts = dt.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[{ts}] Error parsing timestamp {timestamp_ms}: {e}, using current time", flush=True)
+        record['timestamp'] = datetime.now()
+    offset += 8
+    
+    # Priority (1 byte)
+    record['priority'] = struct.unpack('>B', data[offset:offset+1])[0]
+    offset += 1
+    
+    # GPS Data (15 bytes)
+    if offset + 15 > len(data):
+        print(f"Not enough data for GPS at offset {offset}, need 15 bytes, have {len(data) - offset}")
+        return None, offset
+    # GPS parsing pro signed coordinates
+    longitude_raw = struct.unpack('>I', data[offset:offset+4])[0]  # Unsigned first
+    latitude_raw = struct.unpack('>I', data[offset+4:offset+8])[0]  # Unsigned first
+    
+    # Convert to signed if needed (check sign bit)
+    if longitude_raw & (1 << 31):
+        longitude_raw = longitude_raw - 2**32
+    if latitude_raw & (1 << 31):
+        latitude_raw = latitude_raw - 2**32
+        
+    gps_remaining = struct.unpack('>HHBH', data[offset+8:offset+15])
+    
+    record['gps'] = {
+        'longitude': longitude_raw / 10000000.0,  # Degrees * 10^7, signed
+        'latitude': latitude_raw / 10000000.0,    # Degrees * 10^7, signed
+        'altitude': gps_remaining[0],             # Meters
+        'angle': gps_remaining[1],                # Degrees
+        'satellites': gps_remaining[2],           # Count
+        'speed': gps_remaining[3]                 # km/h
+    }
+    offset += 15
+    
+    # I/O Data pro Codec8E - odlišná struktura!
+    # IO Event ID (2 bytes místo 1!)
+    if offset + 2 > len(data):
+        print(f"Not enough data for IO Event ID at offset {offset}")
+        return record, offset
+    io_event_id = struct.unpack('>H', data[offset:offset+2])[0]
+    record['io_event'] = io_event_id
+    offset += 2
+    
+    # Total I/O elements (2 bytes místo 1!)
+    if offset + 2 > len(data):
+        print(f"Not enough data for IO elements count at offset {offset}")
+        return record, offset
+    io_elements = struct.unpack('>H', data[offset:offset+2])[0]
+    record['io_count'] = io_elements
+    offset += 2
+    
+    record['io_data'] = {}
+    
+    # Pro Codec8E má odlišnou strukturu IO - používá 2-byte IO IDs!
+    parsed_io_count = 0
+    
+    # 1-byte I/O elements
+    if offset + 2 <= len(data):
+        count_1b = struct.unpack('>H', data[offset:offset+2])[0]  # 2 bytes pro Codec8E
+        offset += 2
+        if count_1b > 100:
+            print(f"Warning: Suspiciously high 1-byte IO count: {count_1b}")
+            count_1b = min(count_1b, 20)
+            
+        for _ in range(count_1b):
+            if offset + 3 <= len(data):  # 2-byte ID + 1-byte value
+                io_id = struct.unpack('>H', data[offset:offset+2])[0]  # 2-byte ID
+                io_value = struct.unpack('>B', data[offset+2:offset+3])[0]
+                record['io_data'][io_id] = io_value
+                offset += 3
+                parsed_io_count += 1
+    
+    # 2-byte I/O elements
+    if offset + 2 <= len(data):
+        count_2b = struct.unpack('>H', data[offset:offset+2])[0]  # 2 bytes pro Codec8E
+        offset += 2
+        if count_2b > 100:
+            print(f"Warning: Suspiciously high 2-byte IO count: {count_2b}")
+            count_2b = min(count_2b, 20)
+            
+        for _ in range(count_2b):
+            if offset + 4 <= len(data):  # 2-byte ID + 2-byte value
+                io_id = struct.unpack('>H', data[offset:offset+2])[0]  # 2-byte ID
+                io_value = struct.unpack('>H', data[offset+2:offset+4])[0]
+                record['io_data'][io_id] = io_value
+                offset += 4
+                parsed_io_count += 1
+    
+    # 4-byte I/O elements
+    if offset + 2 <= len(data):
+        count_4b = struct.unpack('>H', data[offset:offset+2])[0]  # 2 bytes pro Codec8E
+        offset += 2
+        if count_4b > 100:
+            print(f"Warning: Suspiciously high 4-byte IO count: {count_4b}")
+            count_4b = min(count_4b, 20)
+            
+        for _ in range(count_4b):
+            if offset + 6 <= len(data):  # 2-byte ID + 4-byte value
+                io_id = struct.unpack('>H', data[offset:offset+2])[0]  # 2-byte ID
+                io_value = struct.unpack('>I', data[offset+2:offset+6])[0]
+                record['io_data'][io_id] = io_value
+                offset += 6
+                parsed_io_count += 1
+    
+    # 8-byte I/O elements  
+    if offset + 2 <= len(data):
+        count_8b = struct.unpack('>H', data[offset:offset+2])[0]  # 2 bytes pro Codec8E
+        offset += 2
+        if count_8b > 100:
+            print(f"Warning: Suspiciously high 8-byte IO count: {count_8b}")
+            count_8b = min(count_8b, 20)
+            
+        for _ in range(count_8b):
+            if offset + 10 <= len(data):  # 2-byte ID + 8-byte value
+                io_id = struct.unpack('>H', data[offset:offset+2])[0]  # 2-byte ID
+                io_value = struct.unpack('>Q', data[offset+2:offset+10])[0]
+                record['io_data'][io_id] = io_value
+                offset += 10
+                parsed_io_count += 1
+    
+    # X-byte I/O elements (variable length - only for Codec8E)
+    if offset + 2 <= len(data):
+        count_xb = struct.unpack('>H', data[offset:offset+2])[0]  # 2 bytes pro count
+        offset += 2
+        if count_xb > 100:
+            print(f"Warning: Suspiciously high X-byte IO count: {count_xb}")
+            count_xb = min(count_xb, 10)
+            
+        for _ in range(count_xb):
+            if offset + 4 <= len(data):
+                io_id = struct.unpack('>H', data[offset:offset+2])[0]  # 2-byte ID
+                value_length = struct.unpack('>H', data[offset+2:offset+4])[0]  # 2-byte length
+                offset += 4
+                
+                if offset + value_length <= len(data):
+                    # Pro variable length jen uložíme jako hex string
+                    io_value = data[offset:offset+value_length].hex()
+                    record['io_data'][io_id] = io_value
+                    offset += value_length
+                    parsed_io_count += 1
+    
+    # Update actual IO count
+    record['io_count'] = parsed_io_count
+    
+    return record, offset
+
 def parse_avl_packet_with_length(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, str, int]:
     """
     Parsuje AVL packet a vrací i jeho celkovou délku
@@ -196,7 +411,7 @@ def parse_avl_packet_with_length(data: bytes) -> Tuple[Optional[List[Dict[str, A
                 break
                 
             try:
-                record, new_offset = parse_avl_record(data, offset)
+                record, new_offset = parse_avl_record(data, offset, codec_id)
                 if record:
                     records.append(record)
                     offset = new_offset
@@ -255,7 +470,7 @@ def parse_avl_packet(data: bytes) -> Tuple[Optional[List[Dict[str, Any]]], int, 
                             break
                             
                         try:
-                            record, new_offset = parse_avl_record(data, offset)
+                            record, new_offset = parse_avl_record(data, offset, codec_id)
                             if record:
                                 records.append(record)
                                 offset = new_offset

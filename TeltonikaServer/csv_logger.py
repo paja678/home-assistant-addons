@@ -12,8 +12,7 @@ class CSVLogger:
         self.base_dir = base_dir
         self.devices_dir = os.path.join(base_dir, 'devices')
         self.server_log = os.path.join(base_dir, 'server.log')
-        self.csv_headers = ['timestamp', 'latitude', 'longitude', 'speed', 
-                           'altitude', 'satellites', 'angle', 'io_data']
+        self.csv_headers = ['timestamp', 'raw_data']
         
         # Vytvoř základní strukturu
         os.makedirs(self.devices_dir, exist_ok=True)
@@ -34,8 +33,8 @@ class CSVLogger:
         message = f"RAW DATA from {client_address} (IMEI: {imei or 'unknown'}): {hex_data}"
         self.log_server_event(message)
     
-    def log_gps_record(self, imei, record):
-        """Zaloguje GPS záznam do CSV souboru zařízení"""
+    def log_raw_record(self, imei, hex_data):
+        """Zaloguje RAW hex záznam do CSV souboru zařízení"""
         device_dir = os.path.join(self.devices_dir, imei)
         os.makedirs(device_dir, exist_ok=True)
         
@@ -51,45 +50,11 @@ class CSVLogger:
             if not file_exists:
                 writer.writerow(self.csv_headers)
             
-            # Připrav data záznamu
-            gps = record['gps']
-            timestamp = record.get('timestamp', datetime.now())
-            if isinstance(timestamp, datetime):
-                timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            # Vytvoř timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
-            # Formátuj I/O data jako string
-            io_str = ""
-            if 'io_data' in record and record['io_data']:
-                io_items = []
-                for key, value in record['io_data'].items():
-                    # Mapování známých I/O klíčů podle Teltonika dokumentace
-                    if key == 239:  # Ignition
-                        io_items.append(f"ignition={value}")
-                    elif key == 66:  # External voltage (mV)
-                        io_items.append(f"battery={value/1000:.1f}V")
-                    elif key == 21:  # GSM signal strength
-                        io_items.append(f"gsm_signal={value}")
-                    elif key == 200:  # Sleep mode
-                        io_items.append(f"sleep={value}")
-                    elif key == 69:  # GPS power
-                        io_items.append(f"gps_power={value}")
-                    elif key == 1:  # Digital input 1
-                        io_items.append(f"din1={value}")
-                    else:
-                        io_items.append(f"io{key}={value}")
-                io_str = ",".join(io_items)
-            
-            # Vytvoř CSV řádek
-            row = [
-                timestamp,
-                f"{gps['latitude']:.6f}",
-                f"{gps['longitude']:.6f}", 
-                gps.get('speed', 0),
-                gps.get('altitude', 0),
-                gps.get('satellites', 0),
-                gps.get('angle', 0),
-                io_str
-            ]
+            # Vytvoř CSV řádek - jen čas a raw data
+            row = [timestamp, hex_data]
             writer.writerow(row)
     
     def read_last_records(self, imei, count=2000):
