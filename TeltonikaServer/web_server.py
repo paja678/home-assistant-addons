@@ -318,7 +318,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         async function loadDeviceData(imei) {
             console.log('loadDeviceData called for IMEI:', imei);
             try {
-                const url = `api/device_data?imei=$$${imei}&limit=100`;
+                const url = `api/device_data?imei=${imei}&limit=100`;
                 console.log('Fetching device data from:', url);
                 const response = await fetch(url);
                 console.log('Response status:', response.status);
@@ -454,6 +454,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
             self._send_json_response({"error": "IMEI parameter required"}, status=400)
             return
         
+        
         try:
             if not os.path.exists(self.base_dir):
                 print(f"[ERROR] Base directory does not exist: {self.base_dir}")
@@ -494,6 +495,7 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         if not imei:
             self._send_response(400, "Missing IMEI parameter", 'text/plain')
             return
+        
             
         try:
             import os

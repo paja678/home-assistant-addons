@@ -1,9 +1,9 @@
 {
   "350317176700155": {
     "first_seen": "2025-09-05T10:26:22.297510",
-    "last_seen": "2025-09-05T10:53:14.665648",
-    "total_connections": 11,
-    "total_records": 6,
+    "last_seen": "2025-09-05T12:36:43.732547",
+    "total_connections": 15,
+    "total_records": 24,
     "ip_addresses": [
       "127.0.0.1"
     ],
