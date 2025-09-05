@@ -11,7 +11,8 @@ from buffer_manager import BufferManager
 
 class TeltonikaWebHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.base_dir = '/share/teltonika'
+        # Stejná logika jako v tcp_server.py
+        self.base_dir = '/share/teltonika' if os.path.exists('/data') else './config'
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
@@ -416,8 +417,12 @@ class TeltonikaWebHandler(BaseHTTPRequestHandler):
         """Potlač výchozí HTTP server logy"""
         pass
 
-def start_web_server(host='0.0.0.0', port=3031, base_dir='/share/teltonika'):
+def start_web_server(host='0.0.0.0', port=3031, base_dir=None):
     """Spustí web server"""
+    
+    # Pokud není base_dir specifikováno, použij stejnou logiku jako tcp_server
+    if base_dir is None:
+        base_dir = '/share/teltonika' if os.path.exists('/data') else './config'
     
     class TeltonikaWebHandlerWithBaseDir(TeltonikaWebHandler):
         def __init__(self, *args, **kwargs):
