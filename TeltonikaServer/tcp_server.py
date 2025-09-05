@@ -4,9 +4,8 @@ import os
 import glob
 import binascii
 import struct
-from datetime import datetime
-
 import pytz
+from datetime import datetime, timezone, timedelta
 
 from teltonika_protocol import parse_imei, parse_avl_packet, parse_avl_packet_with_length, format_record_for_log
 from imei_registry import IMEIRegistry

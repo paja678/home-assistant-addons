@@ -24,7 +24,6 @@ class CSVLogger:
     
     def _get_timezone(self):
         """Získej časovou zónu z HA prostředí"""
-        # Zkus Home Assistant timezone z prostředí
         tz_name = os.environ.get('TZ', 'Europe/Prague')
         return pytz.timezone(tz_name)
     
