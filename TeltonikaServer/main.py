@@ -9,29 +9,17 @@ import threading
 import json
 import os
 from datetime import datetime
+
 import pytz
 
 from tcp_server import start_tcp_server, ensure_data_dir
 from web_server import start_web_server
 
 def get_local_time():
-    """Vrátí aktuální čas v správné časové zóně"""
-    try:
-        # Zkus Home Assistant timezone
-        tz_name = os.environ.get('TZ', None)
-        if tz_name:
-            tz = pytz.timezone(tz_name)
-            return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        pass
-        
-    try:
-        # Zkus evropskou časovou zónu (Praha/Česká republika)
-        tz = pytz.timezone('Europe/Prague')
-        return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        # Fallback na systémovou časovou zónu
-        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    """Vrátí aktuální čas z Home Assistant timezone"""
+    tz_name = os.environ.get('TZ', 'Europe/Prague')
+    tz = pytz.timezone(tz_name)
+    return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
 def log_print(message):
     """Print s časovou značkou pro HA addon log"""

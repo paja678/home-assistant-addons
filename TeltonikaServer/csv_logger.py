@@ -23,21 +23,10 @@ class CSVLogger:
         os.makedirs(os.path.dirname(self.server_log), exist_ok=True)
     
     def _get_timezone(self):
-        """Získej časovou zónu z HA prostředí nebo systému"""
-        try:
-            # Zkus Home Assistant timezone
-            tz_name = os.environ.get('TZ', None)
-            if tz_name:
-                return pytz.timezone(tz_name)
-        except:
-            pass
-            
-        try:
-            # Zkus evropskou časovou zónu (Praha/Česká republika)
-            return pytz.timezone('Europe/Prague')
-        except:
-            # Fallback na systémovou časovou zónu
-            return None
+        """Získej časovou zónu z HA prostředí"""
+        # Zkus Home Assistant timezone z prostředí
+        tz_name = os.environ.get('TZ', 'Europe/Prague')
+        return pytz.timezone(tz_name)
     
     def _get_local_time(self):
         """Vrátí aktuální čas v správné časové zóně"""

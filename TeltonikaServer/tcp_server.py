@@ -5,30 +5,19 @@ import glob
 import binascii
 import struct
 from datetime import datetime
+
 import pytz
+
 from teltonika_protocol import parse_imei, parse_avl_packet, parse_avl_packet_with_length, format_record_for_log
 from imei_registry import IMEIRegistry
 from csv_logger import CSVLogger
 from buffer_manager import BufferManager
 
 def get_local_time():
-    """Vrátí aktuální čas v správné časové zóně"""
-    try:
-        # Zkus Home Assistant timezone
-        tz_name = os.environ.get('TZ', None)
-        if tz_name:
-            tz = pytz.timezone(tz_name)
-            return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        pass
-        
-    try:
-        # Zkus evropskou časovou zónu (Praha/Česká republika)
-        tz = pytz.timezone('Europe/Prague')
-        return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        # Fallback na systémovou časovou zónu
-        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    """Vrátí aktuální čas z Home Assistant timezone"""
+    tz_name = os.environ.get('TZ', 'Europe/Prague')
+    tz = pytz.timezone(tz_name)
+    return datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
 
 def log_print(message):
     """Print s časovou značkou pro HA addon log"""

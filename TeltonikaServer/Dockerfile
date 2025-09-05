@@ -1,6 +1,9 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
+# Install pytz for timezone support
+RUN apk add --no-cache py3-tz
+
 RUN mkdir -p /data
 
 WORKDIR /app
